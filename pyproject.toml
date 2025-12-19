@@ -1,0 +1,23 @@
+[project]
+name = "syncbridge-backend"
+version = "0.1.0"
+description = "FastAPI backend for **SyncBridge** — a web-based platform for structured requirement submission, negotiation (subforms), real-time messaging (WebSocket), file upload/preview, email notifications (urgent/normal blocks), and role-based access control (client/developer)."
+authors = [
+    {name = "normalman743",email = "128381694+normalman743@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = "3.10.13"
+dependencies = [
+    "fastapi (>=0.125.0,<0.126.0)",
+    "uvicorn (>=0.38.0,<0.39.0)",
+    "sqlalchemy (>=2.0.45,<3.0.0)",
+    "pymysql (>=1.1.2,<2.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "alembic (>=1.17.2,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+

@@ -2,6 +2,10 @@
 
 FastAPI backend for **SyncBridge** — a web-based platform for structured requirement submission, negotiation (subforms), real-time messaging (WebSocket), file upload/preview, email notifications (urgent/normal blocks), and role-based access control (client/developer).
 
+## Python Version
+Python 3.10.13
+
+
 ## Tech Stack
 - FastAPI (REST + WebSocket)
 - SQLAlchemy + MySQL
@@ -21,7 +25,7 @@ FastAPI backend for **SyncBridge** — a web-based platform for structured requi
 
 ## Directory Structure
 ```text
-backend/
+syncbridge-backend/
   app/
     api/ v1/
     services/
