@@ -16,3 +16,10 @@ class MessageOut(BaseModel):
     user_id: int
     text_content: str
     created_at: datetime
+
+
+class MessageUpdate(BaseModel):
+    text_content: str | None = None
+
+    class Config:
+        extra = "forbid"

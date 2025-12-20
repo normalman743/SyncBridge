@@ -6,7 +6,7 @@ from typing import Optional
 from app.api.v1.deps import get_db
 from app.models import Form, User
 from app.repositories import forms as form_repo
-from app.schemas import FormCreate
+from app.schemas import FormCreate, FormUpdate
 from app.services.permissions import (
     assert_can_create_mainform,
     assert_can_create_subform,
@@ -65,7 +65,7 @@ def create_form(payload: FormCreate, current: User = Depends(get_current_user), 
     return success({"form_id": f.id}, "Form created")
 
 @router.put("/form/{id}")
-def update_form(id: int, changes: dict = Body(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_form(id: int, payload: FormUpdate, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     f = form_repo.get(db, id)
     if not f:
         raise HTTPException(status_code=404, detail=error("Not found", "NOT_FOUND"))
@@ -73,6 +73,9 @@ def update_form(id: int, changes: dict = Body(...), current: User = Depends(get_
         assert_can_update_mainform(f, current)
     else:
         assert_can_update_subform(f, current)
+    changes = payload.dict(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
     form_repo.update_form(db, f, changes)
     return success(None, "Form updated")
 

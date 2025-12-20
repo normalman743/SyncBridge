@@ -1,5 +1,5 @@
 # app/routers/functions.py
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -7,7 +7,7 @@ from app.api.v1.deps import get_db
 from app.models import Function, User
 from app.repositories import forms as form_repo
 from app.repositories import functions as function_repo
-from app.schemas import FunctionIn
+from app.schemas import FunctionIn, FunctionUpdate
 from app.services.permissions import assert_can_add_function_to_form, assert_can_edit_function, assert_can_view_form, get_current_user
 from app.utils import error, success
 
@@ -47,11 +47,14 @@ def create_function(payload: FunctionIn, current: User = Depends(get_current_use
     return success({"id": f.id}, "Function created")
 
 @router.put("/function/{id}")
-def update_function(id: int, changes: dict = Body(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_function(id: int, payload: FunctionUpdate, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     fn = function_repo.get_by_id(db, id)
     if not fn:
         raise HTTPException(status_code=404, detail=error("Function not found", "NOT_FOUND"))
     assert_can_edit_function(fn, current, db)
+    changes = payload.dict(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
     function_repo.update(db, fn, changes)
     return success(None, "Function updated")
 
