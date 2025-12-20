@@ -1,0 +1,2861 @@
+﻿SyncBridge System Design Document (SDD) v1.0 — Section 1
+整体架构  和  模块交互逻辑
+1. Introduction
+1.1 Purpose
+This Software Design Document (SDD) describes the complete technical design of the SyncBridge system, a web-based platform that supports structured requirement submission, negotiation, discussion, and status management between clients and developers.
+The document defines:
+* System architecture (frontend + backend)
+
+* Data models and database schema
+
+* API specifications
+
+* Messaging framework and WebSocket design
+
+* Subform negotiation mechanism
+
+* File storage logic
+
+* Email notification logic (urgent/normal)
+
+* Constraints, flows, and component responsibilities
+
+This SDD is intended for the developers and maintainers of the SyncBridge platform. It provides all necessary information required for implementation, integration, and future extension.
+
+
+1.2 Scope
+SyncBridge is a collaboration platform where:
+   * Clients submit requirement forms
+
+   * Developers view available forms and accept or negotiate
+
+   * Both parties discuss details through structured message blocks
+
+   * Requirements may enter negotiation via subforms
+
+   * Changes must be mutually accepted before merging
+
+   * Real-time communication is supported via WebSocket
+
+   * Email reminders are sent automatically based on block urgency
+
+   * Role access is controlled through the license system
+
+The system includes these primary features:
+      1. Requirement submission (mainform)
+
+      2. Subform negotiation for requirement modification
+
+      3. Functional and non-functional requirement items
+
+      4. Structured message blocks
+
+         * general / function / nonfunction
+
+            5. Real-time messaging and file preview
+
+Status transitions:
+  
+
+               6. Automated email reminders based on block urgency
+
+               7. Role restriction via license (client / developer)
+The platform consists of:
+                  * Frontend: React + Vite, Shadcn UI, TailwindCSS, React Router, Zustand
+
+                  * Backend: FastAPI, SQLAlchemy, MySQL, WebSocket
+
+                  * File storage: local filesystem
+
+                  * Email system: Resend API
+
+                  * Transport: REST API + WebSocket
+
+________________
+
+
+1.3 Definitions and Terminology
+Term
+	Description
+	Mainform
+	The primary requirement form submitted by a client.
+	Subform
+	A modified version of the form used during negotiation; only one active subform is allowed at a time.
+	Function
+	A functional requirement item under a form.
+	NonFunction (NFR)
+	A non-functional requirement item under a form.
+	Block
+	A message thread area (general / function / nonfunction). Controls email notifications.
+	Message
+	Communication posted inside a block (text/file).
+	Status
+	The lifecycle stage of a form or subform.
+	License
+	Determines whether a user is client or developer.
+	Urgent block
+	Sends email if no reply in 5 minutes.
+	Normal block
+	Sends email if no reply in 48 hours.
+	React Query
+	Data fetching library used by frontend.
+	Zustand
+	Frontend state management library.
+	Resend
+	Email delivery provider.
+	________________
+
+
+1.4 References
+                     * FastAPI official documentation
+
+                     * React 18 + Vite documentation
+
+                     * Shadcn UI documentation
+
+                     * SQLAlchemy documentation
+
+                     * IEEE SDD guidelines
+
+________________
+
+
+1.5 Document Overview
+This SDD contains the following major sections:
+                        1. Introduction
+System purpose, scope, and terminology.
+
+                        2. Overall System Architecture
+High-level architecture and interaction between frontend/backed/database.
+
+                        3. Backend Detailed Design
+
+                           * API routing
+
+                           * Services and repositories
+
+                           * WebSocket
+
+                           * File storage
+
+                           * Email logic
+
+                           * Subform state machine
+
+                              4. Frontend Detailed Design
+
+                                 * React architecture
+
+                                 * UI structure
+
+                                 * Page flow
+
+                                 * Role-based visibility
+
+                                 * WebSocket client
+
+                                    5. Database Design
+
+                                       * Table schemas
+
+                                       * ER diagram (UML Plot placeholder)
+
+                                       * Constraints and relationships
+
+                                          6. API Specifications
+
+                                             * Parameters
+
+                                             * Responses
+
+                                             * Error codes
+
+                                             * Permissions (client vs developer)
+
+                                                7. Messaging & Email System Design
+
+                                                8. Security Design
+
+                                                9. Deployment Considerations
+
+                                                10. Appendix — UML Diagrams (UML Plot 1/2/3/4)
+
+
+
+
+2. Overall System Architecture
+2.1 High-Level Architecture Overview
+SyncBridge adopts a modular, service-oriented, three-tier architecture consisting of:
+(1) Frontend Web Client（React + Vite）
+                                                   * Written in React + TypeScript
+
+                                                   * UI built using Shadcn UI + TailwindCSS
+
+                                                   * Routing via React Router
+
+                                                   * State management via Zustand
+
+                                                   * API communication via Axios + React Query
+
+                                                   * Real-time updates via WebSocket
+
+                                                   * File preview rendering (image / text / code)
+
+                                                   * Role-based UI behavior determined by license
+
+                                                   * Form/subform comparison & change highlighting
+
+(2) Backend Server（FastAPI）
+                                                      * REST API endpoints grouped under /api/v1
+
+                                                      * Services handle business logic
+
+                                                      * Repositories handle SQLAlchemy DB operations
+
+                                                      * JWT-based authentication
+
+                                                      * Role-based access (client / developer) via license
+
+                                                      * Status machine enforcement
+
+                                                      * Subform negotiation logic
+
+                                                      * Email automation using Resend API
+
+                                                      * WebSocket manager providing message push channels
+
+(3) Database（MySQL）
+                                                         * Tables for:
+
+                                                            * users & licenses
+
+                                                            * forms & subforms
+
+                                                            * functions, nonfunctions
+
+                                                            * blocks
+
+                                                            * messages
+
+                                                            * files
+
+                                                               * Only one active subform per mainform
+
+                                                               * is_changed field used to highlight modifications
+
+                                                               * blocks.status = urgent / normal / none
+
+                                                               * Email timers (5 min / 48 hr) controlled by block attributes
+
+(4) Local File Storage
+Path:
+/storage/files/{file_id}/{filename}
+
+
+Backend exposes:
+                                                                  * direct download
+
+                                                                  * preview endpoint
+
+(5) Email Notification Service（Resend API）
+Triggered by:
+                                                                     * urgent block: 5-minute no-reply
+
+                                                                     * normal block: 48-hour no-reply
+
+                                                                     * system events (status change, subform merge)
+
+(6) WebSocket Real-Time Messaging
+Channel format:
+ws://server/ws/messages?form_id={id}
+
+
+Frontend receives:
+                                                                        * general messages
+
+                                                                        * function messages
+
+                                                                        * nonfunction messages
+all in one channel, differentiated by:
+
+type: "general" | "function" | "nonfunction"
+target_id: null | function_id | nonfunction_id
+
+
+________________
+
+
+2.2 System Interaction Overview
+Sequence summary of a typical requirement lifecycle:
+                                                                           1. Client submits a mainform (status = preview → available)
+
+                                                                           2. Developer sees available forms
+
+                                                                           3. Developer may
+
+                                                                              * accept → status = processing
+
+                                                                              * propose modification → create subform (rewrite stage)
+
+                                                                                 4. Subform negotiation:
+
+                                                                                    * both comment in blocks
+
+                                                                                    * both must accept to merge
+
+                                                                                    * merged subform overwrites mainform
+
+                                                                                       5. Messaging continues (WebSocket)
+
+                                                                                       6. Email reminders sent based on block urgency
+
+                                                                                       7. Form eventually ends (status = end)
+
+________________
+
+
+2.3 Component Diagram（UML Placeholder）
+Below is the placeholder. The actual PlantUML code will be added later.
+UML Plot 1 — System Component Diagram
+[ UML PLOT 1 HERE ]
+  
+
+Frontend <-> Backend <-> Database
+Backend <-> File Storage
+Backend <-> Email API
+Frontend <-> WebSocket
+
+
+This placeholder will later be replaced with your final PlantUML code.
+________________
+
+
+2.4 Frontend–Backend Interaction Model
+Frontend responsibilities
+                                                                                          * Displays forms/subforms, functions, nonfunctions
+
+                                                                                          * Compares mainform/subform to detect is_changed fields
+
+                                                                                          * Provides editors for messages and file uploads
+
+                                                                                          * Manages authentication via Zustand
+
+                                                                                          * Performs optimistic UI updates for messaging
+
+                                                                                          * Scroll-based message history fetching
+
+                                                                                          * Handles WebSocket reconnect logic
+
+Backend responsibilities
+                                                                                             * Authorization & role validation
+
+                                                                                             * Subform creation / deletion / merge
+
+                                                                                             * Status machine enforcement
+
+                                                                                             * Query filtering based on license role
+
+                                                                                             * Email triggers according to block configuration
+
+                                                                                             * Message delivery via WebSocket
+
+                                                                                             * File storage & preview
+
+________________
+
+
+2.5 Deployment Architecture
+SyncBridge components can run in the following deployment structure:
+                                                                                                * Frontend: Static hosting (Vercel/Nginx/Netlify)
+
+                                                                                                * Backend: FastAPI + Uvicorn + Gunicorn
+
+                                                                                                * Database: MySQL 8.x
+
+                                                                                                * Storage: Local file directory mounted to backend server
+
+                                                                                                * Email service: Resend cloud API
+
+                                                                                                * WebSocket: Backend integrated in FastAPI application
+
+Network flow:
+Client Browser
+   → REST API (HTTPS)
+   → WebSocket (WSS)
+   → Static Assets (CDN)
+Backend Server
+   → MySQL
+   → Local File Storage
+   → Resend API
+
+
+________________
+
+
+2.6 Role-Based Data Flow Summary
+Client
+                                                                                                   * Can view only his own forms
+
+                                                                                                   * Can create/modify/delete mainforms before processing
+
+                                                                                                   * Can reply in all blocks
+
+                                                                                                   * Can create or accept a subform only during rewrite
+
+                                                                                                   * Cannot see other clients' forms
+
+Developer
+                                                                                                      * Can view:
+
+                                                                                                         * available forms
+
+                                                                                                         * processing forms assigned to self
+
+                                                                                                         * end forms assigned to self
+
+                                                                                                            * Can accept available forms → processing
+
+                                                                                                            * Can create/edit/delete subforms
+
+                                                                                                            * Can modify functions / nonfunctions
+
+                                                                                                            * Can propose rewrite
+
+                                                                                                            * Messaging allowed in all blocks
+
+________________
+
+
+2.7 Constraints
+                                                                                                               * Only one subform per mainform is allowed
+
+                                                                                                               * Form and subform have identical structure
+
+                                                                                                               * is_changed only meaningful on subform fields
+
+                                                                                                               * Block-level email triggers must be respected
+
+                                                                                                               * File size ≤ 10MB
+
+                                                                                                               * No multi-version history
+
+                                                                                                               * No admin role
+
+                                                                                                               * API surface must stay minimal
+
+
+3. Backend Detailed Design
+This chapter describes the complete backend architecture of SyncBridge, including routing, services, repositories, security, status logic, subform rules, WebSocket messaging, email notifications, and file handling. All content strictly follows our previous discussions; no new features or roles are introduced.
+________________
+
+
+3.1 Backend Technology Stack
+                                                                                                                  * FastAPI — REST API + WebSocket
+
+                                                                                                                  * Python 3.11+
+
+                                                                                                                  * SQLAlchemy ORM — MySQL schema access
+
+                                                                                                                  * MySQL 8.x — relational database
+
+                                                                                                                  * Uvicorn/Gunicorn — ASGI server
+
+                                                                                                                  * Resend API — email delivery
+
+                                                                                                                  * Local File Storage — /storage/files/{file_id}/{filename}
+
+                                                                                                                  * JWT Authentication — access token
+
+                                                                                                                  * Passlib — password hashing
+
+                                                                                                                  * Pydantic — request/response validation
+
+________________
+
+
+3.2 Backend Directory Structure
+Matches your provided structure exactly:
+backend/
+ ├─ app/
+ │   ├─ api/
+ │   │   ├─ v1/
+ │   │   │   ├─ auth.py
+ │   │   │   ├─ forms.py
+ │   │   │   ├─ subforms.py
+ │   │   │   ├─ functions.py
+ │   │   │   ├─ nonfunctions.py
+ │   │   │   ├─ messages.py
+ │   │   │   ├─ files.py
+ │   │   │   └─ status.py
+ │   │   └─ deps.py
+ │   │
+ │   ├─ services/
+ │   │   ├─ auth_service.py
+ │   │   ├─ form_service.py
+ │   │   ├─ subform_service.py
+ │   │   ├─ function_service.py
+ │   │   ├─ nonfunction_service.py
+ │   │   ├─ message_service.py
+ │   │   ├─ file_service.py
+ │   │   └─ email_service.py
+ │   │
+ │   ├─ repositories/
+ │   │   ├─ user_repo.py
+ │   │   ├─ form_repo.py
+ │   │   ├─ subform_repo.py
+ │   │   ├─ function_repo.py
+ │   │   ├─ nonfunction_repo.py
+ │   │   ├─ block_repo.py
+ │   │   ├─ message_repo.py
+ │   │   └─ file_repo.py
+ │   │
+ │   ├─ models/
+ │   │   ├─ user.py
+ │   │   ├─ license.py
+ │   │   ├─ form.py
+ │   │   ├─ subform.py
+ │   │   ├─ function.py
+ │   │   ├─ nonfunction.py
+ │   │   ├─ block.py
+ │   │   ├─ message.py
+ │   │   └─ file.py
+ │   │
+ │   ├─ schemas/
+ │   │   ├─ user_schema.py
+ │   │   ├─ form_schema.py
+ │   │   ├─ subform_schema.py
+ │   │   ├─ function_schema.py
+ │   │   ├─ nonfunction_schema.py
+ │   │   ├─ block_schema.py
+ │   │   ├─ message_schema.py
+ │   │   └─ file_schema.py
+ │   │
+ │   ├─ core/
+ │   │   ├─ config.py
+ │   │   ├─ security.py
+ │   │   ├─ database.py
+ │   │   ├─ logging.py
+ │   │   └─ email_client.py
+ │   │
+ │   ├─ utils/
+ │   │   ├─ validators.py
+ │   │   ├─ file_upload.py
+ │   │   ├─ preview_renderer.py
+ │   │   └─ websocket_manager.py
+ │   │
+ │   └─ main.py
+ │
+ └─ tests/
+
+
+________________
+
+
+3.3 Backend Component Responsibilities
+3.3.1 API Layer
+Each API file handles:
+                                                                                                                     * Request validation
+
+                                                                                                                     * Authentication (via deps.py)
+
+                                                                                                                     * Calling underlying services
+
+                                                                                                                     * Formatting responses
+
+APIs are thin wrappers; no business logic is placed here.
+________________
+
+
+3.3.2 Services Layer
+Services hold all business logic, including:
+Service
+	Responsibilities
+	auth_service
+	Register, login, password hashing, license verification
+	form_service
+	Mainform CRUD, status rules, subform linking
+	subform_service
+	Create, update, delete subform; merge logic; is_changed propagation
+	function_service
+	CRUD for functional requirements
+	nonfunction_service
+	CRUD for NFR requirements
+	message_service
+	Message creation, block identification, WebSocket push
+	file_service
+	File upload, size validation, saving to storage, preview generation
+	email_service
+	Send emails via Resend API; check block urgency timers
+	________________
+
+
+3.3.3 Repository Layer
+Each repository corresponds to one DB model and handles:
+                                                                                                                        * SQLAlchemy session management
+
+                                                                                                                        * CRUD operations
+
+                                                                                                                        * Query filtering based on user role (client/developer)
+
+                                                                                                                        * Relationship fetching
+
+Repositories contain only raw DB operations, no business rules.
+________________
+
+
+3.4 Authentication & Authorization
+3.4.1 Authentication
+                                                                                                                           * JWT-based access token
+
+                                                                                                                           * Token returned on login and registration
+
+                                                                                                                           * /api/v1/auth/me returns user info and license role
+
+3.4.2 Authorization
+Role determined via license table:
+user.role
+	meaning
+	client
+	can only see own forms
+	developer
+	can view available forms + own processing/end forms
+	________________
+
+
+3.5 Status Machine (Mainform/Subform)
+3.5.1 Mainform Status
+  
+
+
+
+
+
+Rules
+Transition
+	Allowed
+	Notes
+	preview → available
+	Yes
+	After client submits
+	available → processing
+	Yes
+	Developer accepts
+	available → rewrite
+	Yes
+	Developer proposes subform
+	processing → rewrite
+	Yes
+	Either side proposes changes
+	rewrite → processing
+	Yes
+	Both agree to merge
+	processing → end
+	Yes
+	Developer completes
+	Any → error
+	Yes
+	Either side reports issue
+	________________
+
+
+3.6 Subform Logic
+3.6.1 Only one active subform
+Each mainform can have at most:
+1 mainform + 1 subform
+
+
+3.6.2 Subform creation
+Developer creates:
+POST /api/v1/form/{id}/subform
+
+
+Mainform’s subform_id points to the new subform.
+3.6.3 is_changed logic
+For subform:
+                                                                                                                              * functions / nonfunctions contain field:
+
+is_changed BOOLEAN DEFAULT 0
+
+
+Frontend performs comparison → backend stores boolean.
+3.6.4 Subform merge
+When both agree:
+                                                                                                                                 * subform overwrites mainform contents
+
+                                                                                                                                 * subform deleted
+
+                                                                                                                                 * mainform.status = processing
+
+3.6.5 Subform rejection
+If rejected:
+                                                                                                                                    * subform deleted
+
+                                                                                                                                    * mainform reverts to previous status
+
+                                                                                                                                    * no version history kept
+
+________________
+
+
+3.7 Blocks (Message Areas)
+Each form/subform has blocks:
+Block Type
+	Meaning
+	general
+	whole form discussion
+	function
+	per-functional requirement
+	nonfunction
+	per-NFR requirement
+	Block Email Logic
+Block fields:
+status ENUM('urgent','normal','none')
+urgent_time = 5min
+normal_time = 48h
+
+
+                                                                                                                                       * urgent → email if no reply in 5 minutes
+
+                                                                                                                                       * normal → email if no reply in 48 hours
+
+                                                                                                                                       * none → never send email
+
+________________
+
+
+3.8 WebSocket Real-Time Messaging
+Endpoint
+ws://server/ws/messages?form_id={id}
+
+
+On new message: backend pushes
+{
+  "block_id": 12,
+  "type": "general" | "function" | "nonfunction",
+  "target_id": null | function_id | nonfunction_id,
+  "message": { ... },
+  "sender_id": 7,
+  "timestamp": "2025-11-14T20:10:23Z"
+}
+
+
+Why single channel?
+                                                                                                                                          * Simpler
+
+                                                                                                                                          * No need to subscribe to multiple endpoints
+
+                                                                                                                                          * Reduces WebSocket overhead
+
+________________
+
+
+3.9 Email Notification Logic
+Email is not exposed via API — always backend-triggered.
+Triggers
+Event
+	Email Sent To
+	urgent block no reply in 5min
+	other party
+	normal block no reply in 48h
+	other party
+	status change
+	both parties
+	subform merge
+	both parties
+	subform deletion
+	both parties
+	Backend scheduler checks:
+last_message_at
+block.status = urgent/normal
+no reply → send email
+
+
+________________
+
+
+3.10 File Handling
+Upload Requirements
+                                                                                                                                             * max size: 10MB
+
+                                                                                                                                             * allowed: any type
+
+                                                                                                                                             * previewable: image, text, code
+
+Storage Path
+/storage/files/{file_id}/{filename}
+
+
+Preview Endpoint
+GET /api/v1/file/{file_id}/preview
+
+
+Backend auto-detects:
+                                                                                                                                                * text encoding
+
+                                                                                                                                                * code syntax for highlighting
+
+                                                                                                                                                * image formats
+
+________________
+
+
+3.11 UML Plot Placeholder
+UML Plot 2 — Backend Component Diagram
+[ UML PLOT 2 HERE ]
+Services ←→ Repositories ←→ Database
+API Layer ←→ Services
+WebSocket Manager ←→ Message Service
+Email Service ←→ Resend API
+File Service ←→ File Storage
+  
+
+
+
+ww4. Frontend Detailed Design
+This chapter describes the complete frontend architecture of SyncBridge, including component structure, routing, state management, API integration, UI toolkit usage, message real-time updates via WebSocket, and file preview logic.
+The frontend is implemented using React + Vite with React Router, shadcn UI, and TailwindCSS.
+________________
+
+
+4.1 Frontend Technology Stack
+Technology
+	Purpose
+	React 18+
+	UI rendering, component architecture
+	Vite
+	Fast development server, optimized bundling
+	React Router v6
+	Client-side routing
+	TailwindCSS
+	Utility-first styling
+	shadcn/ui
+	Atomic UI components (Inputs, Buttons, Cards, Dialogs, Tabs, etc.)
+	Axios
+	REST API client
+	JWT stored in memory
+	Authentication token (not localStorage for security)
+	React Query (optional)
+	Request caching and mutation handling
+	WebSocket
+	Real-time messaging updates
+	CodeMirror / Monaco (optional)
+	Code preview for uploaded text/code files
+	A reserved space is left for Chinese developer remarks.
+________________
+
+
+4.2 Frontend Directory Structure
+frontend/
+ ├─ src/
+ │   ├─ api/                 # Axios wrappers for backend endpoints
+ │   │   ├─ auth.ts
+ │   │   ├─ forms.ts
+ │   │   ├─ subforms.ts
+ │   │   ├─ functions.ts
+ │   │   ├─ nonfunctions.ts
+ │   │   ├─ messages.ts
+ │   │   └─ files.ts
+ │   │
+ │   ├─ components/
+ │   │   ├─ ui/              # shadcn ui components
+ │   │   ├─ layout/
+ │   │   ├─ form/
+ │   │   ├─ function/
+ │   │   ├─ nonfunction/
+ │   │   ├─ messages/
+ │   │   └─ common/
+ │   │
+ │   ├─ hooks/
+ │   │   ├─ useAuth.ts
+ │   │   ├─ useWebSocket.ts
+ │   │   └─ useDebounce.ts
+ │   │
+ │   ├─ pages/
+ │   │   ├─ Login.tsx
+ │   │   ├─ Register.tsx
+ │   │   ├─ Dashboard.tsx
+ │   │   ├─ FormList.tsx
+ │   │   ├─ FormDetail.tsx
+ │   │   ├─ SubformEditor.tsx
+ │   │   ├─ FunctionEditor.tsx
+ │   │   ├─ NonFunctionEditor.tsx
+ │   │   ├─ MessageRoom.tsx
+ │   │   └─ NotFound.tsx
+ │   │
+ │   ├─ router/
+ │   │   └─ index.tsx
+ │   │
+ │   ├─ styles/
+ │   │   └─ globals.css
+ │   │
+ │   ├─ utils/
+ │   │   ├─ format.ts
+ │   │   ├─ storage.ts
+ │   │   └─ preview.ts
+ │   │
+ │   ├─ main.tsx
+ │   └─ App.tsx
+ │
+ └─ index.html
+
+
+________________
+
+
+4.3 Routing Design (React Router v6)
+/login
+/register
+/dashboard
+/forms
+/forms/:id                     # mainform detail
+
+
+
+
+
+
+Role-based visibility
+Route
+	Client
+	Developer
+	/forms
+	only own forms
+	available + assigned forms
+	/forms/:id
+	yes (if owner)
+	yes (if assigned or available)
+	/forms/:id/subform
+	yes (if subform exists)
+	yes (can create/edit)
+	Backend authorization ensures safety; frontend hides buttons based on role.
+________________
+
+
+4.4 State Management
+Auth State
+{
+  user: { id, role, email, display_name },
+  token: JWT,
+  license: { role: 'client' | 'developer' }
+}
+
+
+State is kept in memory (React context) to avoid persistent token exposure.
+________________
+________________
+
+
+4.5 UI Component Architecture
+SyncBridge UI is constructed using shadcn/ui and TailwindCSS.
+4.5.1 Global Layout
+                                                                                                                                                   * Collapsible navigation bar (Home, Forms, Messages)
+
+
+                                                                                                                                                   * Responsive containers for laptop/mobile
+
+4.5.2 Main Components
+FormCard
+                                                                                                                                                      * shows form title, status, updated_at
+
+                                                                                                                                                      * shows indicators: subform exists, is_changed, urgent block
+
+FormDetailPanel
+                                                                                                                                                         * mainform + subform comparison UI
+
+                                                                                                                                                         * sections:
+
+                                                                                                                                                            * Title
+
+                                                                                                                                                            * Description
+
+                                                                                                                                                            * Functions list
+
+                                                                                                                                                            * NFR list
+
+                                                                                                                                                            * Budget
+
+                                                                                                                                                            * Expected time
+
+                                                                                                                                                            * Subform diffs (highlighting changed fields)
+
+MessageRoom
+                                                                                                                                                               * WebSocket-based
+
+                                                                                                                                                               * Infinite scroll (20 messages per GET)
+
+                                                                                                                                                               * Components:
+
+                                                                                                                                                                  * MessageItem
+
+                                                                                                                                                                  * FilePreview (image, text, code)
+
+                                                                                                                                                                  * MessageInputBar
+
+                                                                                                                                                                  * BlockSwitcher (general/function/nonfunction)
+
+FunctionEditor / NonFunctionEditor
+                                                                                                                                                                     * Inline edit of requirement items
+
+                                                                                                                                                                     * is_changed badge for subform
+
+SubformEditor
+                                                                                                                                                                        * Displays differences between mainform and subform
+
+                                                                                                                                                                        * Allows save/delete/merge
+
+________________
+
+
+4.6 API Integration Layer
+Design Principles
+                                                                                                                                                                           1. axios.create() instance with token interceptor
+
+                                                                                                                                                                           2. Centralized error handling
+
+                                                                                                                                                                           3. Response shape normalized:
+
+{
+  status: "success" | "error",
+  message: "optional message",
+  data: {...}
+}
+
+
+________________
+
+
+4.7 WebSocket Implementation (Frontend)
+Endpoint:
+ws://server/ws/messages?form_id={id}?function_id={id}?nonfunction_id={id}
+
+
+useWebSocket Hook
+                                                                                                                                                                              * connects on component mount
+
+                                                                                                                                                                              * reconnects automatically
+
+exposes:
+
+messages
+sendMessage()
+connectionStatus
+                                                                                                                                                                                 * Frontend Behavior
+                                                                                                                                                                                 * Newly received messages appear instantly
+
+                                                                                                                                                                                 * If block.status == urgent or normal → timer resets
+
+                                                                                                                                                                                 * If subform exists → messages tagged with subform context
+
+________________
+
+
+4.8 File Upload & Preview Logic
+Upload
+                                                                                                                                                                                    * via POST /api/v1/file/upload
+
+                                                                                                                                                                                    * validates:
+
+                                                                                                                                                                                       * size < 10MB
+
+                                                                                                                                                                                       * filename safe
+
+Preview
+Uses /api/v1/file/{file_id}/preview which returns:
+{ type: "image" | "text" | "code", content: "..." }
+
+
+Frontend:
+                                                                                                                                                                                          * Image → <img>
+
+                                                                                                                                                                                          * Text → <pre>
+
+                                                                                                                                                                                          * Code → Monaco editor (optional)
+
+________________
+
+
+4.9 Form & Subform Interaction Logic
+4.9.1 Client sees
+                                                                                                                                                                                             * own mainform
+
+                                                                                                                                                                                             * subform (if exists)
+
+                                                                                                                                                                                             * comparison UI
+
+                                                                                                                                                                                             * subform creation button
+
+                                                                                                                                                                                             * merge, delete subform
+4.9.2 Developer sees
+                                                                                                                                                                                                * list of available forms
+
+                                                                                                                                                                                                * accepted forms (processing)
+
+                                                                                                                                                                                                * end forms
+
+                                                                                                                                                                                                * subform creation button
+
+                                                                                                                                                                                                * merge, delete subform
+
+4.9.3 Status transitions in UI
+Controlled by backend; UI shows buttons only when allowed:
+status
+	allowed actions
+	preview
+	none
+	available
+	developer can Accept / Propose Changes
+	processing
+	both can propose rewrite
+	rewrite
+	merge / reject / continue discussion
+	end
+	no modifications
+	error
+	discussion only
+	________________
+
+
+4.10 Error Handling & Notifications
+                                                                                                                                                                                                   * shadcn Toasts for success/error feedback
+
+                                                                                                                                                                                                   * Global Axios interceptor maps backend error codes:
+
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+409 Conflict
+500 Internal Server Error
+
+
+________________
+
+
+4.11 Performance Considerations
+                                                                                                                                                                                                      * Component-level memoization
+
+                                                                                                                                                                                                      * Pagination for message history
+
+                                                                                                                                                                                                      * Debounced API calls for editors
+
+                                                                                                                                                                                                      * Lazy loading pages for Forms, Subforms, Messages
+
+                                                                                                                                                                                                      * Partial rendering for function lists and large forms
+
+________________
+
+
+4.12 Security
+                                                                                                                                                                                                         * Tokens kept in memory (not localStorage or cookies)
+
+                                                                                                                                                                                                         * API calls always include Authorization: Bearer token
+
+                                                                                                                                                                                                         * Sanitized HTML in message preview
+
+                                                                                                                                                                                                         * File preview safe-mode: no script execution
+
+                                                                                                                                                                                                         * Form role-based gating on UI layer + backend enforcement
+
+________________
+
+
+4.13 Placeholder UML Diagrams
+As required, no actual UML code is placed here—only placeholders:
+UML Plot 3 — Frontend Architecture Diagram
+(placed later in appendix)
+  
+
+UML Plot 4 — Component Interaction: FormDetail ↔ SubformEditor ↔ MessageRoom
+  
+
+UML Plot 5 — WebSocket Frontend Flow
+  
+
+5. System-Wide Flow Diagrams
+This chapter outlines the major system flows of SyncBridge using structured diagrams.
+Each diagram is represented with a UML PLOT placeholder, and detailed written explanations are included for the implementation teams.
+The diagrams cover:
+                                                                                                                                                                                                            1. User Authentication Flow
+
+                                                                                                                                                                                                            2. Form + Subform Lifecycle (Main Status Machine)
+
+                                                                                                                                                                                                            3. Function / NonFunction Interaction Flow
+
+                                                                                                                                                                                                            4. Message + WebSocket Flow
+
+                                                                                                                                                                                                            5. File Upload and Preview Flow
+
+                                                                                                                                                                                                            6. Email Notification Flow (Urgent / Normal Blocks)
+
+________________
+
+
+5.1 User Authentication Flow
+UML PLOT 1 — Authentication Flow Diagram
+  
+
+Flow Description
+                                                                                                                                                                                                               1. User opens /login or /register.
+
+                                                                                                                                                                                                               2. User enters credentials:
+
+                                                                                                                                                                                                                  * email
+
+                                                                                                                                                                                                                  * password
+
+                                                                                                                                                                                                                     3. Frontend sends request to:
+
+                                                                                                                                                                                                                        * POST /api/v1/auth/register
+
+                                                                                                                                                                                                                        * POST /api/v1/auth/login
+
+                                                                                                                                                                                                                           4. Backend:
+
+                                                                                                                                                                                                                              * validates payload
+
+                                                                                                                                                                                                                              * hashes password (register)
+
+                                                                                                                                                                                                                              * checks email + password (login)
+
+                                                                                                                                                                                                                              * loads license.role (client or developer)
+
+                                                                                                                                                                                                                              * generates JWT token
+
+                                                                                                                                                                                                                                 5. Response:
+
+{
+  status: "success",
+  data: { user, token, license }
+}
+
+
+                                                                                                                                                                                                                                    6. Frontend stores token in memory (not in localStorage).
+
+                                                                                                                                                                                                                                    7. Frontend requests user info via:
+
+                                                                                                                                                                                                                                       * GET /api/v1/auth/me
+
+                                                                                                                                                                                                                                          8. React context updates global auth state.
+
+________________
+
+
+5.2 Form + Subform Lifecycle Flow
+UML PLOT 2 — Mainform + Subform Status Machine
+5.2.1 Mainform Status States
+  
+
+
+
+5.2.2 Actions
+Actor
+	Action
+	Result
+	client
+	submit form
+	preview
+	developer
+	accept
+	available → processing
+	developer
+	propose subform
+	available → rewrite
+	either
+	propose subform
+	processing → rewrite
+	both
+	merge subform
+	rewrite → processing
+	either
+	report issue
+	any → error
+	developer
+	finish
+	processing → end
+	5.2.3 Detailed Lifecycle Explanation
+1. Client Submits Form → preview
+                                                                                                                                                                                                                                             * Form created with status = preview
+
+                                                                                                                                                                                                                                             * After auto-validation, status becomes available
+
+2. Developer Accepts Form
+                                                                                                                                                                                                                                                * status = processing
+
+3. Developer Proposes Subform
+                                                                                                                                                                                                                                                   * subform is created, linked via mainform.subform_id
+
+                                                                                                                                                                                                                                                   * mainform.status = rewrite
+
+                                                                                                                                                                                                                                                   * is_changed fields propagate
+
+4. Discussion Phase
+                                                                                                                                                                                                                                                      * both parties chat in block threads
+
+                                                                                                                                                                                                                                                      * all fields displayed in “compare mode”
+
+5. Merge
+                                                                                                                                                                                                                                                         * subform overwrites mainform
+
+                                                                                                                                                                                                                                                         * subform deleted
+
+                                                                                                                                                                                                                                                         * status → processing
+
+6. Reject Subform
+                                                                                                                                                                                                                                                            * subform deleted
+
+                                                                                                                                                                                                                                                            * mainform state resets to previous
+
+                                                                                                                                                                                                                                                            * no version history saved (per your rules)
+
+________________
+
+
+5.3 Function / NonFunction Flow
+UML PLOT 3 — Functions & NonFunctions CRUD Flow
+  
+
+5.3.1 Relationship
+Each form (or subform) contains:
+1 mainform
+0/1 subform
+N functions
+M nonfunctions
+
+
+5.3.2 CRUD Rules
+Actor
+	Allowed Actions
+	Client
+	edit their mainform, update functions/NFR
+	Developer
+	edit mainform during rewrite/processing
+	Subform
+	only creator may edit/delete
+	5.3.3 is_changed Propagation
+When editing subform:
+                                                                                                                                                                                                                                                               * changed fields → set is_changed = 1
+
+                                                                                                                                                                                                                                                               * frontend highlights changed fields visually
+
+________________
+
+
+5.4 Messaging + WebSocket Flow
+UML PLOT 4 — Real-Time Messaging Flow Diagram
+  
+
+5.4.1 Posting a Message
+                                                                                                                                                                                                                                                                  1. User writes message in a specific block:
+
+                                                                                                                                                                                                                                                                     * general
+
+                                                                                                                                                                                                                                                                     * function
+
+                                                                                                                                                                                                                                                                     * nonfunction
+
+                                                                                                                                                                                                                                                                        2. Frontend sends:
+
+POST /api/v1/messages?form_id=X&function_id=Y
+
+
+                                                                                                                                                                                                                                                                           3. Backend stores:
+
+                                                                                                                                                                                                                                                                              * message
+
+                                                                                                                                                                                                                                                                              * block_id
+
+                                                                                                                                                                                                                                                                              * any attached files
+
+                                                                                                                                                                                                                                                                                 4. Backend triggers WebSocket push:
+
+websocket_manager.broadcast(form_id, message_payload)
+
+
+5.4.2 Receiving Messages
+Frontend WebSocket client:
+                                                                                                                                                                                                                                                                                    * listens for new messages
+
+                                                                                                                                                                                                                                                                                    * inserts into local state
+
+                                                                                                                                                                                                                                                                                    * scrolls to bottom automatically
+
+5.4.3 Lazy-loading History
+GET /api/v1/messages?form_id=X&page=2&page_size=20
+ returns older messages as user scrolls up.
+________________
+
+
+5.5 File Upload and Preview Flow
+UML PLOT 5 — File Upload & Preview Flow
+  
+
+5.5.1 Upload
+                                                                                                                                                                                                                                                                                       1. User selects file (≤ 10MB).
+
+                                                                                                                                                                                                                                                                                       2. Frontend sends:
+
+POST /api/v1/file/upload
+
+
+                                                                                                                                                                                                                                                                                          3. Backend:
+
+                                                                                                                                                                                                                                                                                             * validates size
+
+                                                                                                                                                                                                                                                                                             * generates file_id
+
+                                                                                                                                                                                                                                                                                             * saves file at /storage/files/{file_id}/{filename}
+
+                                                                                                                                                                                                                                                                                             * creates DB record
+
+                                                                                                                                                                                                                                                                                                4. Backend pushes message via WebSocket with file metadata.
+
+5.5.2 Preview
+Frontend requests:
+GET /api/v1/file/{file_id}/preview
+
+
+Backend returns:
+{
+  type: "image" | "text" | "code" | "binary",
+  content: "..."   // base64 or text
+}
+
+
+Frontend displays:
+                                                                                                                                                                                                                                                                                                   * image
+
+                                                                                                                                                                                                                                                                                                   * formatted text
+
+                                                                                                                                                                                                                                                                                                   * code editor
+
+                                                                                                                                                                                                                                                                                                   * “download only” when binary
+
+________________
+
+
+5.6 Email Notification Flow (Urgent / Normal Blocks)
+UML PLOT 6 — Email Trigger Logic
+  
+
+5.6.1 Block Timer Rules
+Block status
+	Email Rule
+	urgent
+	send email if no reply after 5 minutes
+	normal
+	send email if no reply after 48 hours
+	none
+	never send email
+	5.6.2 Backend Implementation
+                                                                                                                                                                                                                                                                                                      1. Each block stores:
+
+status
+last_message_at
+urgent_time = 5min
+normal_time = 48h
+
+
+                                                                                                                                                                                                                                                                                                         2. A scheduler (cron or async loop) checks all blocks:
+
+if block.status == urgent and idle_time > 5min:
+    send email
+if block.status == normal and idle_time > 48h:
+    send email
+
+
+                                                                                                                                                                                                                                                                                                            3. Email message includes:
+
+                                                                                                                                                                                                                                                                                                               * form_id
+
+                                                                                                                                                                                                                                                                                                               * block type
+
+                                                                                                                                                                                                                                                                                                               * summary of last message
+
+                                                                                                                                                                                                                                                                                                               * link to message room
+
+                                                                                                                                                                                                                                                                                                                  4. Email is triggered only once per idle cycle (flag stored).
+
+________________
+
+
+5.7 System Integration Flow
+UML PLOT 7 — Full System Interaction Flow
+  
+
+Covers all components:
+Frontend → API → Service Layer → Repository Layer → Database
+             ↓
+         WebSocket Manager → Frontend
+             ↓
+         Email Service → Resend API → User Inbox
+             ↓
+         File Service → Local Storage
+
+
+This plot shows how the three communication paths integrate:
+                                                                                                                                                                                                                                                                                                                     * REST API
+
+                                                                                                                                                                                                                                                                                                                     * WebSocket
+
+                                                                                                                                                                                                                                                                                                                     * Email
+
+
+6. Database Schema
+This chapter defines the complete MySQL relational schema for SyncBridge.
+The schema is designed to support:
+                                                                                                                                                                                                                                                                                                                        * mainform + subform (1-to-1 temporary version)
+
+                                                                                                                                                                                                                                                                                                                        * functions & nonfunctions (1-to-many)
+
+                                                                                                                                                                                                                                                                                                                        * blocks & messages (for general/function/nonfunction discussion)
+
+                                                                                                                                                                                                                                                                                                                        * urgent/normal email triggering
+
+                                                                                                                                                                                                                                                                                                                        * file attachments
+
+                                                                                                                                                                                                                                                                                                                        * license-based roles (client/developer)
+
+                                                                                                                                                                                                                                                                                                                        * controlled status transitions
+
+                                                                                                                                                                                                                                                                                                                        * simple future extensibility
+
+All table definitions follow InnoDB, UTF8MB4, and foreign key constraints.
+________________
+
+
+6.1 Entity–Relationship Overview
+UML PLOT 8 — ER Diagram (Tables & Relationships)
+  
+
+High-level relationships:
+User (1) — (1) License
+
+
+User (1) — (many) Form (mainform)
+Form (1) — (0/1) Subform
+
+
+Form/Subform (1) — (many) Function
+Form/Subform (1) — (many) NonFunction
+
+
+Form/Subform (1) — (many) Block
+Block (1) — (many) Message
+Message (1) — (many) File
+
+
+Everything is tightly connected while remaining normalized and easy to use in APIs.
+________________
+
+
+6.2 Table Definitions
+________________
+
+
+6.2.1 users
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	User ID
+	email
+	VARCHAR(255) UNIQUE
+	Login email
+	password_hash
+	VARCHAR(255)
+	Hashed password
+	display_name
+	VARCHAR(64)
+	User nickname
+	created_at
+	DATETIME
+	Registration time
+	updated_at
+	DATETIME
+	Last update
+	________________
+
+
+6.2.2 licenses (each user has exactly one license)
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	user_id
+	INT FK(users.id) UNIQUE
+	License owner
+	role
+	ENUM('client','developer')
+	Defines system ability
+	activated_at
+	DATETIME
+	Activation time
+	Notes:
+                                                                                                                                                                                                                                                                                                                           * This design ensures role is mutable without changing user table.
+
+                                                                                                                                                                                                                                                                                                                           * Only client / developer roles are supported (no admin).
+
+________________
+
+
+6.2.3 forms (mainform or subform)
+Each record represents either a mainform or a subform.
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	type
+	ENUM('main','sub')
+	mainform/subform
+	owner_id
+	INT FK(users.id)
+	Creator (client usually)
+	parent_id
+	INT FK(forms.id) NULL
+	mainform → subform linkage (only used when type='sub')
+	title
+	VARCHAR(255)
+	
+
+	message
+	TEXT
+	
+
+	budget
+	VARCHAR(64)
+	
+
+	expected_time
+	VARCHAR(64)
+	
+
+	status
+	ENUM('preview','available','processing','rewrite','end','error')
+	Only meaningful for mainform
+	created_at
+	DATETIME
+	
+
+	updated_at
+	DATETIME
+	
+
+	Rules enforced at service layer:
+                                                                                                                                                                                                                                                                                                                              * mainform has type='main'
+
+                                                                                                                                                                                                                                                                                                                              * subform has type='sub' and parent_id = mainform.id
+
+                                                                                                                                                                                                                                                                                                                              * at most one subform per mainform
+
+mainform.subform_id?
+Instead of storing in mainform, we use a parent-child model:
+SELECT * FROM forms WHERE parent_id = mainform.id LIMIT 1
+
+
+This avoids circular references and simplifies deletion.
+________________
+
+
+6.2.4 functions (functional requirements)
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	form_id
+	INT FK(forms.id)
+	Owned by mainform/subform
+	name
+	VARCHAR(255)
+	
+
+	choice
+	ENUM('lightweight','commercial','enterprise')
+	
+
+	description
+	TEXT
+	
+
+	previous_function_id
+	INT FK(functions.id) NULL
+	Optional for chains
+	is_changed
+	BOOLEAN DEFAULT 0
+	Marked only when subform differs
+	created_at
+	DATETIME
+	
+
+	updated_at
+	DATETIME
+	
+
+	________________
+
+
+6.2.5 nonfunctions (non-functional requirements)
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	form_id
+	INT FK(forms.id)
+	
+
+	name
+	VARCHAR(255)
+	
+
+	level
+	ENUM('lightweight','commercial','enterprise')
+	
+
+	status
+	ENUM('init','developing','finish','error')
+	
+
+	function_weight
+	INT
+	1–10
+	is_changed
+	BOOLEAN DEFAULT 0
+	
+
+	created_at
+	DATETIME
+	
+
+	updated_at
+	DATETIME
+	
+
+	________________
+
+
+6.2.6 blocks
+Blocks are message groups.
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	form_id
+	INT FK(forms.id)
+	mainform OR subform
+	type
+	ENUM('general','function','nonfunction')
+	Block category
+	target_id
+	INT NULL
+	function_id / nonfunction_id
+	status
+	ENUM('urgent','normal','none')
+	Controls email reminders
+	created_at
+	DATETIME
+	
+
+	updated_at
+	DATETIME
+	
+
+	Behavior:
+                                                                                                                                                                                                                                                                                                                                 * Each form/subform has:
+
+                                                                                                                                                                                                                                                                                                                                    * 1 general block
+
+                                                                                                                                                                                                                                                                                                                                    * X function blocks
+
+                                                                                                                                                                                                                                                                                                                                    * Y nonfunction blocks
+
+                                                                                                                                                                                                                                                                                                                                       * Email triggers use:
+
+                                                                                                                                                                                                                                                                                                                                          * urgent_time = 5min
+
+                                                                                                                                                                                                                                                                                                                                          * normal_time = 48h
+based on status.
+
+________________
+
+
+6.2.7 messages
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	block_id
+	INT FK(blocks.id)
+	
+
+	user_id
+	INT FK(users.id)
+	Sender
+	text_content
+	TEXT NULL
+	Message text
+	created_at
+	DATETIME
+	
+
+	updated_at
+	DATETIME
+	
+
+	Notes:
+                                                                                                                                                                                                                                                                                                                                             * File attachments are in files table.
+
+                                                                                                                                                                                                                                                                                                                                             * WebSocket pushes from backend after insert.
+
+________________
+
+
+6.2.8 files
+Field
+	Type
+	Description
+	id
+	INT PK AUTO
+	
+
+	message_id
+	INT FK(messages.id)
+	
+
+	file_name
+	VARCHAR(255)
+	
+
+	file_type
+	VARCHAR(32)
+	
+
+	file_size
+	INT
+	
+
+	path
+	VARCHAR(255)
+	/storage/files/{file_id}/{filename}
+	preview_generated
+	BOOLEAN DEFAULT 0
+	
+
+	created_at
+	DATETIME
+	
+
+	________________
+
+
+6.3 Constraints and Integrity Rules
+6.3.1 One mainform → zero or one subform
+Enforced by service logic:
+SELECT COUNT(*) FROM forms WHERE parent_id = mainform.id <= 1
+
+
+6.3.2 Function & NonFunction belong to one form
+FK ensures deletion cascades.
+6.3.3 Message flow
+                                                                                                                                                                                                                                                                                                                                                * Each block must belong to a valid form/subform
+
+                                                                                                                                                                                                                                                                                                                                                * Messages must belong to exactly one block
+
+6.3.4 File limitations
+                                                                                                                                                                                                                                                                                                                                                   * size < 10MB (service-layer check)
+
+                                                                                                                                                                                                                                                                                                                                                   * no binary preview stored
+
+6.3.5 License integrity
+                                                                                                                                                                                                                                                                                                                                                      * Each user has exactly one license
+
+                                                                                                                                                                                                                                                                                                                                                      * Role never stored in user table
+
+________________
+
+
+6.4 Indexing Strategy
+Recommended Indexes
+users: email UNIQUE
+licenses: user_id UNIQUE
+forms: owner_id, status, parent_id
+functions: form_id
+nonfunctions: form_id
+blocks: form_id, type, target_id
+messages: block_id, created_at
+files: message_id
+
+
+Justification:
+                                                                                                                                                                                                                                                                                                                                                         * Fast form listing by role
+
+                                                                                                                                                                                                                                                                                                                                                         * Efficient message pagination
+
+                                                                                                                                                                                                                                                                                                                                                         * Quick block lookup for messaging threads
+
+________________
+
+
+6.5 Example Schema Snippets (DDL-style, abbreviated)
+(Not full SQL, just representative)
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(64),
+  created_at DATETIME,
+  updated_at DATETIME
+);
+
+
+CREATE TABLE licenses (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT UNIQUE NOT NULL,
+  role ENUM('client','developer') NOT NULL,
+  activated_at DATETIME,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
+CREATE TABLE forms (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  type ENUM('main','sub') NOT NULL,
+  owner_id INT NOT NULL,
+  parent_id INT NULL,
+  status ENUM('preview','available','processing','rewrite','end','error'),
+  title VARCHAR(255),
+  message TEXT,
+  budget VARCHAR(64),
+  expected_time VARCHAR(64),
+  created_at DATETIME,
+  updated_at DATETIME,
+  FOREIGN KEY (owner_id) REFERENCES users(id),
+  FOREIGN KEY (parent_id) REFERENCES forms(id)
+);
+
+
+(Other tables similar.)
+________________
+
+
+7. API Specification
+All API endpoints follow these conventions:
+                                                                                                                                                                                                                                                                                                                                                            * Base URL: /api/v1
+
+                                                                                                                                                                                                                                                                                                                                                            * Responses use unified format:
+
+{
+  "status": "success" | "error",
+  "message": "Readable message",
+  "data": { ... }  // optional
+}
+
+
+                                                                                                                                                                                                                                                                                                                                                               * Role-based filtering is done on the backend using JWT + license table.
+
+                                                                                                                                                                                                                                                                                                                                                               * All timestamps are in UTC.
+
+________________
+
+
+7.1 Authentication Endpoints
+7.1.1 POST /auth/register
+Register a new user.
+Request
+{
+  "email": "user@example.com",
+  "password": "example123",
+  "display_name": "Steven"
+}
+
+
+Success Response
+{
+  "status": "success",
+  "message": "Registration successful",
+  "data": {
+    "user": { id, email, display_name },
+    "token": "JWT_TOKEN",
+    "license": { "role": "client" }
+  }
+}
+
+
+Error Codes
+                                                                                                                                                                                                                                                                                                                                                                  * 409 → email already exists
+
+                                                                                                                                                                                                                                                                                                                                                                  * 400 → invalid password / missing fields
+
+________________
+
+
+7.1.2 POST /auth/login
+Login with email and password.
+Request
+{
+  "email": "user@example.com",
+  "password": "example123"
+}
+
+
+Success Response
+{
+  "status": "success",
+  "message": "Login successful",
+  "data": {
+    "user": { id, email, display_name },
+    "token": "JWT_TOKEN",
+    "license": { "role": "client" | "developer" }
+  }
+}
+
+
+Errors
+                                                                                                                                                                                                                                                                                                                                                                     * 401 incorrect email/password
+
+                                                                                                                                                                                                                                                                                                                                                                     * 403 license not activated
+
+________________
+
+
+7.1.3 GET /auth/me
+Return the authenticated user.
+Success Response
+{
+  "status": "success",
+  "data": {
+    "user": { id, email, display_name },
+    "license": { "role": "client"|"developer" }
+  }
+}
+
+
+________________
+
+
+7.2 Form Endpoints
+Forms include mainform and subform.
+Only mainforms appear in form lists.
+________________
+
+
+7.2.1 GET /forms
+Return list of forms based on role.
+Client Output
+Returns only own mainforms.
+GET /forms?page=1&page_size=20
+
+
+Response
+{
+  "status": "success",
+  "data": {
+    "forms": [
+      {
+        "id": 12,
+        "title": "Website redesign",
+        "status": "processing",
+        "has_subform": true,
+        "updated_at": "2025-11-14T20:10:11Z"
+      }
+    ]
+  }
+}
+
+
+________________
+
+
+Developer Output
+Developer sees:
+                                                                                                                                                                                                                                                                                                                                                                        1. All available forms
+
+                                                                                                                                                                                                                                                                                                                                                                        2. All mainforms assigned to them (processing + end)
+
+GET /forms?role_view=developer
+
+
+(Same URL; backend checks license.)
+________________
+
+
+7.2.2 GET /forms/{id}
+Fetch full detail of a mainform.
+Request
+No body.
+Response
+{
+  "status": "success",
+  "data": {
+    "mainform": { ...full mainform data... },
+    "subform": { ... } | null,
+    "functions": [...],
+    "nonfunctions": [...],
+    "blocks": [... general/function/nonfunction blocks ... ]
+  }
+}
+
+
+Role differences
+Field
+	Client
+	Developer
+	mainform
+	full
+	full
+	subform
+	view
+	view + edit privileges
+	actions button
+	only allowed transitions
+	only allowed transitions
+	________________
+
+
+7.2.3 POST /form
+Client creates a new form.
+Request
+{
+  "title": "...",
+  "message": "...",
+  "budget": "...",
+  "expected_time": "...",
+  "functions": [...optional...],
+  "nonfunctions": [...optional...]
+}
+
+
+Response
+{ "status": "success", "data": { "form_id": 123 } }
+
+
+________________
+
+
+7.2.4 PUT /form/{id}
+Edit mainform (only if allowed by status).
+Allowed
+                                                                                                                                                                                                                                                                                                                                                                           * client edits own form in preview or available
+
+                                                                                                                                                                                                                                                                                                                                                                           * developer edits form only in rewrite
+
+Response
+{ "status": "success", "message": "Form updated" }
+
+
+________________
+
+
+7.2.5 DELETE /form/{id}
+Only client can delete own form before processing.
+________________
+
+
+7.3 Subform Endpoints
+7.3.1 POST /form/{id}/subform
+Developer or client proposes a rewrite.
+This creates a new subform.
+Response
+{
+  "status": "success",
+  "message": "Subform created",
+  "data": { "subform_id": 55 }
+}
+
+
+________________
+
+
+7.3.2 PUT /subform/{id}
+Modify fields on a subform.
+Updates is_changed for changed fields.
+{ "status": "success", "message": "Subform updated" }
+
+
+________________
+
+
+7.3.3 DELETE /subform/{id}
+Reject subform.
+                                                                                                                                                                                                                                                                                                                                                                              * subform deleted
+
+                                                                                                                                                                                                                                                                                                                                                                              * mainform returns to its previous status
+
+________________
+
+
+7.3.4 POST /subform/{id}/merge
+Both parties agree → merge subform.
+Response
+{
+  "status": "success",
+  "message": "Subform merged into mainform"
+}
+
+
+________________
+
+
+7.4 Function Endpoints
+GET /functions?form_id=F
+Return all functional requirements for the given form.
+POST /function
+Create a new function.
+PUT /function/{id}
+Edit a function (role rules apply).
+DELETE /function/{id}
+Delete a function.
+Responses all follow:
+{ "status": "success", "message": "..." }
+
+
+________________
+
+
+7.5 Nonfunctional Endpoints
+Identical structure to functions.
+GET /nonfunctions?form_id=F
+POST /nonfunction
+PUT /nonfunction/{id}
+DELETE /nonfunction/{id}
+
+
+________________
+
+
+7.6 Messaging Endpoints
+Messages belong to blocks.
+7.6.1 GET /messages
+/messages?form_id=F&function_id=X&nonfunction_id=Y&page=1&page_size=20
+
+
+Interpretation
+Params
+	Meaning
+	only form_id
+	general block
+	form + function_id
+	function-specific
+	form + nonfunction_id
+	nfr-specific
+	Response
+{
+  "status": "success",
+  "data": {
+    "messages": [
+      {
+        "id": 1,
+        "user": {...},
+        "text": "...",
+        "files": [...],
+        "created_at": "..."
+      }
+    ]
+  }
+}
+
+
+________________
+
+
+7.6.2 POST /message
+Send a message to a specific block.
+Request
+{
+  "form_id": X,
+  "function_id": null,
+  "nonfunction_id": null,
+  "text": "Hello",
+  "file_ids": [ ...optional... ]
+}
+
+
+Response
+{ "status": "success", "message": "Message sent" }
+
+
+The backend also pushes the message via WebSocket.
+________________
+
+
+7.6.3 DELETE /message/{id}
+Only sender can delete.
+________________
+
+
+7.7 Files Endpoints
+POST /file/upload
+Upload file (< 10MB).
+Response
+{
+  "status": "success",
+  "data": {
+    "file_id": 99,
+    "file_name": "image.png"
+  }
+}
+
+
+________________
+
+
+GET /file/{file_id}
+Download file.
+GET /file/{file_id}/preview
+Preview text/image/code.
+Response
+{
+  "status": "success",
+  "data": {
+    "type": "image",
+    "content": "base64..."
+  }
+}
+
+
+________________
+
+
+7.8 Role-Based Output Summary
+API
+	Client Output
+	Developer Output
+	GET /forms
+	only own
+	available + assigned
+	GET /form/{id}
+	editable only in allowed state
+	editable in rewrite + processing
+	Subform
+	view only unless creator
+	full control
+	Function/NFR
+	can edit when in allowed state
+	can edit in rewrite
+	________________
+
+
+7.9 Error Codes Overview
+Code
+	Meaning
+	400
+	invalid input
+	401
+	authentication required
+	403
+	not permitted by role
+	404
+	resource not found
+	409
+	status/rule conflict
+	422
+	validation failed
+	500
+	internal server error
+	
+
+8. System Operations & Deployment
+This chapter describes the operational environment, deployment workflow, runtime services, and integration considerations for the SyncBridge system. The objective is to ensure reliable, secure, and maintainable operation across all supported environments.
+________________
+
+
+8.1 Overview of Runtime Architecture
+SyncBridge is deployed as a client–server architecture composed of:
+                                                                                                                                                                                                                                                                                                                                                                                 1. Frontend Application
+
+                                                                                                                                                                                                                                                                                                                                                                                    * React + Vite
+
+                                                                                                                                                                                                                                                                                                                                                                                    * React Router
+
+                                                                                                                                                                                                                                                                                                                                                                                    * TailwindCSS + shadcn/ui
+
+                                                                                                                                                                                                                                                                                                                                                                                    * Served via Nginx or Vercel/Netlify
+
+                                                                                                                                                                                                                                                                                                                                                                                       2. Backend Application (FastAPI)
+
+                                                                                                                                                                                                                                                                                                                                                                                          * REST API
+
+                                                                                                                                                                                                                                                                                                                                                                                          * WebSocket server for real-time messages
+
+                                                                                                                                                                                                                                                                                                                                                                                          * SMTP integration with Resend API
+
+                                                                                                                                                                                                                                                                                                                                                                                          * Local file storage (/storage/files/...)
+
+                                                                                                                                                                                                                                                                                                                                                                                             3. Database Layer
+
+                                                                                                                                                                                                                                                                                                                                                                                                * MySQL 8.0+
+
+                                                                                                                                                                                                                                                                                                                                                                                                   4. File Storage
+
+                                                                                                                                                                                                                                                                                                                                                                                                      * Local disk storage
+
+                                                                                                                                                                                                                                                                                                                                                                                                      * Served via FastAPI static endpoints
+
+                                                                                                                                                                                                                                                                                                                                                                                                         5. Email Service
+
+                                                                                                                                                                                                                                                                                                                                                                                                            * Resend API
+
+                                                                                                                                                                                                                                                                                                                                                                                                            * Triggered automatically by backend rule engine
+
+                                                                                                                                                                                                                                                                                                                                                                                                            * Not exposed as an API to clients
+
+________________
+
+
+8.2 Backend Deployment Architecture
+8.2.1 Backend Components
+The backend service consists of:
+                                                                                                                                                                                                                                                                                                                                                                                                               * ASGI server: uvicorn or gunicorn+uvicorn workers
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * FastAPI application
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * WebSocket manager
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * Background scheduler (for email reminders)
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * Database connection pool
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * Local file store
+
+                                                                                                                                                                                                                                                                                                                                                                                                               * Logging system
+
+8.2.2 Directory Structure (Final Version)
+backend/
+ ├─ app/
+ │   ├─ api/
+ │   │   ├─ v1/
+ │   │   │   ├─ auth.py
+ │   │   │   ├─ forms.py
+ │   │   │   ├─ subforms.py
+ │   │   │   ├─ functions.py
+ │   │   │   ├─ nonfunctions.py
+ │   │   │   ├─ messages.py
+ │   │   │   └─ files.py
+ │   │   └─ deps.py
+ │   │
+ │   ├─ services/
+ │   ├─ repositories/
+ │   ├─ models/
+ │   ├─ schemas/
+ │   ├─ core/
+ │   ├─ utils/
+ │   └─ main.py
+ │
+ ├─ storage/
+ │   └─ files/{file_id}/{filename}
+ │
+ ├─ tests/
+ └─ requirements.txt
+
+
+________________
+
+
+8.3 Backend Runtime Services
+8.3.1 REST API Layer
+FastAPI handles:
+                                                                                                                                                                                                                                                                                                                                                                                                                  * auth
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  * forms / subforms
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  * functions / nonfunctions
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  * messaging
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  * files upload/download
+
+                                                                                                                                                                                                                                                                                                                                                                                                                  * role-based filtering
+
+All API requests pass through:
+                                                                                                                                                                                                                                                                                                                                                                                                                     * dependency-based authentication
+
+                                                                                                                                                                                                                                                                                                                                                                                                                     * license validation
+
+                                                                                                                                                                                                                                                                                                                                                                                                                     * role-based authorization
+
+                                                                                                                                                                                                                                                                                                                                                                                                                     * input validation (Pydantic)
+
+________________
+
+
+8.3.2 WebSocket Service
+Used for:
+                                                                                                                                                                                                                                                                                                                                                                                                                        * Real-time message updates
+
+                                                                                                                                                                                                                                                                                                                                                                                                                        * Real-time block alerts
+
+                                                                                                                                                                                                                                                                                                                                                                                                                        * Synchronizing form/subform edits if needed
+
+Approach:
+                                                                                                                                                                                                                                                                                                                                                                                                                           * A centralized WebSocketManager maintains connections:
+
+ws://server/api/v1/ws/messages
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                              * Users subscribe to channels identified by:
+
+form_id
+function_id
+nonfunction_id
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                 * New messages automatically broadcast to subscribers.
+
+________________
+
+
+8.3.3 Email Delivery (Resend API)
+Email delivery is event-driven.
+The backend triggers email when:
+                                                                                                                                                                                                                                                                                                                                                                                                                                    * status changes
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                    * new form is submitted
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                    * urgent messages not replied within 5 minutes
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                    * normal messages not replied within 48 hours
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                    * subform created or rejected
+
+Emails are not exposed via an external API endpoint.
+________________
+
+
+8.3.4 Background Task Scheduler
+A scheduler (APScheduler or built-in FastAPI BackgroundTasks) runs:
+                                                                                                                                                                                                                                                                                                                                                                                                                                       * Urgent block reminder check every 1 minute
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                       * Normal block reminder check every 30 minutes
+
+Block fields:
+status = 'urgent' | 'normal' | 'none'
+urgent_time = 5 minutes
+normal_time = 48 hours
+
+
+If no reply:
+                                                                                                                                                                                                                                                                                                                                                                                                                                          * backend triggers email via resend
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                          * block reminder timestamp resets
+
+________________
+
+
+8.3.5 File Storage
+All user-uploaded files (max 10MB) are stored:
+/storage/files/{file_id}/{filename}
+
+
+Preview rules:
+                                                                                                                                                                                                                                                                                                                                                                                                                                             * images → returned as base64
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                             * code/text → returned as UTF-8 string
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                             * binary → downloadable only
+
+________________
+
+
+8.3.6 Logging
+Includes:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                * Access logs
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                * Error logs
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                * Email events
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                * Subform merge records
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                * Message block reminder logs
+
+Persisted in:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                   * log/ folder
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                   * or external logging system (optional)
+
+________________
+
+
+8.4 Frontend Deployment Architecture
+8.4.1 Build Tools
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Vite
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      * React Router
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      * TailwindCSS
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      * shadcn/ui components
+
+8.4.2 Output Structure
+After npm run build, output:
+dist/
+ ├─ index.html
+ ├─ assets/
+ ├─ css/
+ └─ js/
+
+
+8.4.3 Deployment Options
+Frontend can be deployed to:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         * Nginx
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         * Vercel
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         * Netlify
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         * Cloudflare Pages
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         * GitHub Pages (static hosting)
+
+8.4.4 Environment Variables
+Frontend stores only non-secret config:
+VITE_API_BASE_URL=https://backend.example.com
+VITE_WS_BASE_URL=wss://backend.example.com
+
+
+________________
+
+
+8.5 Database Deployment
+8.5.1 MySQL 8.0 Required
+Character set:
+utf8mb4
+
+
+Timezone:
+UTC
+
+
+Tables are indexed on:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            * user_id
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            * form_id
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            * block_id
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            * function_id / nonfunction_id
+
+________________
+
+
+8.6 Deployment Steps
+Backend Deployment
+                                                                                                                                                                                                                                                                                                                                                                                                                                                               1. Install dependencies:
+
+pip install -r requirements.txt
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                  2. Initialize database:
+
+alembic upgrade head
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                     3. Start server:
+
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        4. (Optional) Daemon mode with Supervisor or systemd.
+
+________________
+
+
+Frontend Deployment
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                           1. Install dependencies:
+
+npm install
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              2. Build:
+
+npm run build
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 3. Serve dist/ using Nginx or a static host.
+
+________________
+
+
+8.7 Security Considerations
+Authentication
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    * JWT stored in secure HTTP-only cookies (recommended)
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    * Token must be refreshed every 7 days
+
+Access Control
+Based entirely on:
+license.role = client | developer
+
+
+File Security
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * file path is never directly exposed
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * only download endpoint returns files
+
+Email Security
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          * Resend API key stored only in backend environment variables
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          * Keys never reachable by frontend
+
+________________
+
+
+8.8 Scalability Recommendations
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             * Horizontal scaling with multiple uvicorn workers
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             * WebSocket scaling using Redis Pub/Sub
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             * Separate file storage to S3 in future version
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             * Add rate limiting (FastAPI-Limiter)
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             * Add message caching for faster loading
+
+________________
+
+
+8.9 Disaster Recovery
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                * Daily DB backup
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                * File storage backup
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                * Log archival
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                * Recovery test once per semester
+
+
+9. UML Diagrams
+This chapter provides the core structural and behavioral diagrams for the SyncBridge system.
+They are intended for backend developers, frontend developers, and system architects to understand data relationships, workflows, and module interactions.
+The diagrams included are:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   1. System Architecture Diagram
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   2. Use Case Diagram
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   3. Domain Model / ER Diagram
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   4. Form–Subform Workflow State Machine
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   5. Messaging and Block Interaction Sequence Diagram
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   6. API Layer Diagram (High-Level)
+
+Each section contains both a descriptive explanation and the exact PlantUML code to reproduce the diagram.
+________________
+
+
+9.1 System Architecture Diagram
+Description:
+This diagram shows the high-level architecture: frontend, backend, WebSocket server, MySQL database, email provider, and file storage.
+It visually frames how the system is deployed and how different layers communicate.
+UML Diagram 1 — System Architecture
+  
+
+________________
+
+
+9.2 Use Case Diagram (Client + Developer)
+Description:
+Shows the two roles (client and developer) and the core use cases:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Authentication
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Form management
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Subform negotiation
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Function/nonfunction editing
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Messaging
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * File upload
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Automatic email notifications
+
+UML Diagram 2 — Use Case Diagram
+  
+
+________________
+
+
+9.3 Domain Model (Entity–Relationship Diagram)
+Description:
+This is the core data model:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * users
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * license
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * forms + subforms
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * functions & nonfunctions
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * blocks
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * messages
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         * files
+
+This matches exactly the database schema we finalized.
+UML Diagram 3 — Domain Model (ER)
+  
+
+________________
+
+
+9.4 Form–Subform Workflow (State Machine)
+Description:
+This captures the exact mainform/subform negotiation flow:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * preview
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * available
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * processing
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * rewrite (subform exists)
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * end
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            * error
+
+UML Diagram 4 — Workflow State Machine
+  
+
+________________
+
+
+9.5 Messaging Interaction (Sequence Diagram)
+Description:
+Shows sending a message, WebSocket broadcast, block reminder logic, and file attachment handling.
+UML Diagram 5 — Messaging Sequence
+  ________________
+
+
+9.6 API Layer Diagram
+Description:
+Shows routing structure:
+/auth
+/forms
+/subforms
+/functions
+/nonfunctions
+/messages
+/files
+
+
+UML Diagram 6 — API Layer

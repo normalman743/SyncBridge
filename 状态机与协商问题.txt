@@ -1,0 +1,13 @@
+规范要求（见附件 Api and database.txt 与 models.md:660-707）：
+主单状态：preview / available / processing / rewrite / end / error；error 终止，不回退。
+典型流转：client preview→available；developer available→processing（接单）；processing→rewrite（配合创建 subform）；rewrite→processing（合并）；任何阶段协商失败可设 error；processing→end。
+协商：一主一协；创建 subform 时可将 mainform 置 rewrite；可“同意协商”（合并 subform 到 mainform，删除 subform，状态回 processing）；可“取消协商/失败”（删除 subform，通常回 processing 或设 error）；is_changed 仅在 subform 上可为 1。
+当前实现（代码）：
+状态表：在 permissions.py:107-124 固定为 preview→available→processing→{rewrite,end,error}；rewrite 仅回 processing 或 error；end/error 终止。
+状态接口：在 forms.py:66-103 client 仅能 preview→available 或设 error；developer 可 available→processing（绑定接单人），已绑定才能改其他状态；未开放 processing→rewrite/end 等细分。
+协商：在 forms.py + forms.py 仅支持创建 subform（并把 mainform.status 直接写 rewrite）与删除 subform（强制 mainform.status=processing）；无合并/拒绝逻辑、无内容合并/恢复、无 is_changed 约束。
+不对齐点：
+缺少 processing→rewrite、rewrite→processing/end/error 的角色限定与校验；error 终态虽终止，但设定入口未对“协商失败”场景做专门判断。
+缺少“同意协商/合并”与“取消协商/失败”端点和数据操作（覆盖 mainform、删除 subform、回退状态）。
+is_changed 未在服务层限制仅 subform 可为 1；subform 函数/非功差异未合并。
+详情/列表未附带 subform 及其子项，前端需多次请求。
