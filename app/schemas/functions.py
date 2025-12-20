@@ -18,3 +18,14 @@ class FunctionOut(BaseModel):
     description: str | None
     status: str
     is_changed: bool
+
+
+class FunctionUpdate(BaseModel):
+    name: str | None = None
+    choice: str | None = None
+    description: str | None = None
+    status: str | None = None
+    is_changed: bool | None = None
+
+    class Config:
+        extra = "forbid"

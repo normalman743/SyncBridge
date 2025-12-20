@@ -2,7 +2,7 @@
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db
@@ -10,7 +10,7 @@ from app.models import Block, Message, User
 from app.repositories import blocks as block_repo
 from app.repositories import forms as form_repo
 from app.repositories import messages as message_repo
-from app.schemas import MessageIn
+from app.schemas import MessageIn, MessageUpdate
 from app.services.permissions import assert_can_access_block, assert_can_edit_message, assert_can_post_message, get_current_user
 from app.services.websocket_manager import manager
 from app.utils import error, success
@@ -123,7 +123,7 @@ def post_message(
 @router.put("/message/{id}")
 def update_message(
     id: int,
-    changes: dict = Body(...),
+    payload: MessageUpdate,
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -132,6 +132,10 @@ def update_message(
         raise HTTPException(status_code=404, detail=error("Message not found", "NOT_FOUND"))
 
     assert_can_edit_message(msg, current)
+
+    changes = payload.dict(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
 
     message_repo.update_message(db, msg, changes)
 

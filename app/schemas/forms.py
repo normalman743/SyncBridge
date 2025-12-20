@@ -21,3 +21,13 @@ class FormOut(BaseModel):
     developer_id: int | None
     subform_id: int | None
     created_at: datetime
+
+
+class FormUpdate(BaseModel):
+    title: str | None = None
+    message: str | None = None
+    budget: str | None = None
+    expected_time: str | None = None
+
+    class Config:
+        extra = "forbid"
