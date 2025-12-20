@@ -25,6 +25,7 @@ def activate(db: Session, license_key: str, user: User):
     lic.activated_at = datetime.utcnow()
 
     user.role = lic.role
+    user.is_active = 1
     user.updated_at = datetime.utcnow()
 
     db.commit()

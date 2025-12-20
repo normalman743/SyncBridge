@@ -9,7 +9,8 @@ def get_by_id(db: Session, message_id: int) -> Message | None:
 
 
 def list_messages(db: Session, block_id: int, page: int, page_size: int):
-    query = db.query(Message).filter(Message.block_id == block_id).order_by(Message.created_at)
+    # latest-first feed so page 1 shows most recent messages
+    query = db.query(Message).filter(Message.block_id == block_id).order_by(Message.created_at.desc())
     total = query.count()
     items = (
         query.offset(max(page - 1, 0) * page_size)

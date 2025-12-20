@@ -24,7 +24,7 @@ def create(db: Session, email: str, password: str, display_name: str | None = No
         password_hash=get_password_hash(password),
         display_name=display_name or email.split("@")[0],
         role=None,
-        is_active=1,
+        is_active=0,
         created_at=now,
         updated_at=now,
     )

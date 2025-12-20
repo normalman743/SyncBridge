@@ -6,7 +6,7 @@ from app.api.v1.deps import get_db
 from app.models import NonFunction, User
 from app.repositories import forms as form_repo
 from app.repositories import nonfunctions as nonfunction_repo
-from app.schemas import FunctionIn
+from app.schemas import NonFunctionIn
 from app.services.permissions import assert_can_add_function_to_form, assert_can_edit_function, assert_can_view_form, get_current_user
 from app.utils import error, success
 
@@ -35,7 +35,7 @@ def list_nonfunctions(form_id: int, current: User = Depends(get_current_user), d
     return success({"nonfunctions": out})
 
 @router.post("/nonfunction")
-def create_nonfunction(payload: FunctionIn, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_nonfunction(payload: NonFunctionIn, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     form = form_repo.get(db, payload.form_id)
     if not form:
         raise HTTPException(status_code=404, detail=error("Form not found", "NOT_FOUND"))
