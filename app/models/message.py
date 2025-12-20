@@ -1,10 +1,13 @@
-# message 模型
-from sqlalchemy import Integer, DateTime, ForeignKey, Text, func
+from sqlalchemy import Integer, DateTime, ForeignKey, Text, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 class Message(Base):
     __tablename__ = "messages"
+    __table_args__ = (
+        Index("ix_messages_block_id", "block_id"),
+        Index("ix_messages_user_id", "user_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     block_id: Mapped[int] = mapped_column(ForeignKey("blocks.id"), nullable=False)

@@ -1,10 +1,12 @@
-# file 模型
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, func
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 class File(Base):
     __tablename__ = "files"
+    __table_args__ = (
+        Index("ix_files_message_id", "message_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     message_id: Mapped[int] = mapped_column(ForeignKey("messages.id"), nullable=False)

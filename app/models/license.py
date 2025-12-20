@@ -1,9 +1,12 @@
-from sqlalchemy import String, Integer, DateTime, Enum, ForeignKey
+from sqlalchemy import String, Integer, DateTime, Enum, ForeignKey, SmallInteger, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 class License(Base):
     __tablename__ = "licenses"
+    __table_args__ = (
+        Index("ix_licenses_user_id", "user_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     license_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
