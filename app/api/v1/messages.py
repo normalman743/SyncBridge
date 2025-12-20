@@ -1,5 +1,4 @@
 # app/routers/messages.py
-import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -72,7 +71,7 @@ def get_messages(
 # (Here we add WebSocket broadcast)
 # ============================================================
 @router.post("/message")
-def post_message(
+async def post_message(
     payload: MessageIn,
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -95,21 +94,19 @@ def post_message(
     # ========== WebSocket Broadcast ==========
     room = _make_room_key(payload.form_id, payload.function_id, payload.nonfunction_id)
 
-    asyncio.create_task(
-        manager.broadcast(
-            room,
-            {
-                "type": "message",
-                "action": "create",
-                "message": {
-                    "id": msg.id,
-                    "block_id": msg.block_id,
-                    "user_id": msg.user_id,
-                    "text_content": msg.text_content,
-                    "created_at": str(msg.created_at),
-                },
+    await manager.broadcast(
+        room,
+        {
+            "type": "message",
+            "action": "create",
+            "message": {
+                "id": msg.id,
+                "block_id": msg.block_id,
+                "user_id": msg.user_id,
+                "text_content": msg.text_content,
+                "created_at": str(msg.created_at),
             },
-        )
+        },
     )
     # =========================================
 
@@ -121,7 +118,7 @@ def post_message(
 # (Also broadcast update)
 # ============================================================
 @router.put("/message/{id}")
-def update_message(
+async def update_message(
     id: int,
     changes: dict = Body(...),
     current: User = Depends(get_current_user),
@@ -140,21 +137,19 @@ def update_message(
     room = _make_room_key(block.form_id, block.target_id if block.type == "function" else None,
                           block.target_id if block.type == "nonfunction" else None)
 
-    asyncio.create_task(
-        manager.broadcast(
-            room,
-            {
-                "type": "message",
-                "action": "update",
-                "message": {
-                    "id": msg.id,
-                    "block_id": msg.block_id,
-                    "user_id": msg.user_id,
-                    "text_content": msg.text_content,
-                    "updated_at": str(msg.updated_at),
-                },
+    await manager.broadcast(
+        room,
+        {
+            "type": "message",
+            "action": "update",
+            "message": {
+                "id": msg.id,
+                "block_id": msg.block_id,
+                "user_id": msg.user_id,
+                "text_content": msg.text_content,
+                "updated_at": str(msg.updated_at),
             },
-        )
+        },
     )
 
     return success(None, "Message updated")
@@ -165,7 +160,7 @@ def update_message(
 # (Also broadcast delete)
 # ============================================================
 @router.delete("/message/{id}")
-def delete_message(
+async def delete_message(
     id: int,
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -184,15 +179,13 @@ def delete_message(
     message_repo.delete_message(db, msg)
 
     # WS broadcast delete event
-    asyncio.create_task(
-        manager.broadcast(
-            room,
-            {
-                "type": "message",
-                "action": "delete",
-                "message_id": id,
-            },
-        )
+    await manager.broadcast(
+        room,
+        {
+            "type": "message",
+            "action": "delete",
+            "message_id": id,
+        },
     )
 
     return success(None, "Message deleted")

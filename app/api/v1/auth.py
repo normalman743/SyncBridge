@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db
@@ -6,7 +6,8 @@ from app.models import User
 from app.repositories import licenses as license_repo
 from app.repositories import users as user_repo
 from app.schemas import LoginIn, RegisterIn
-from app.utils import create_access_token, decode_access_token, error, success
+from app.utils import create_access_token, error, success
+from app.services.permissions import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -59,34 +60,6 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
         },
         "Login success",
     )
-
-
-# ============================
-#     从 Header 提取 token
-# ============================
-def get_current_user(
-    authorization: str = Header(None),
-    db: Session = Depends(get_db)
-) -> User:
-
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail=error("Missing token", "UNAUTHORIZED"))
-
-    token = authorization.split(" ")[1].strip()
-    payload = decode_access_token(token)
-
-    if not payload:
-        raise HTTPException(status_code=401, detail=error("Invalid or expired token", "UNAUTHORIZED"))
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail=error("Invalid token payload", "UNAUTHORIZED"))
-
-    user = user_repo.get_by_id(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail=error("User not found", "NOT_FOUND"))
-
-    return user
 
 
 # ============================

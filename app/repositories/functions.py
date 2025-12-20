@@ -31,8 +31,9 @@ def create(db: Session, payload: dict) -> Function:
 
 
 def update(db: Session, fn: Function, changes: dict) -> Function:
+    allowed_fields = {"name", "choice", "description", "status", "is_changed"}
     for field, value in changes.items():
-        if hasattr(fn, field):
+        if field in allowed_fields and hasattr(fn, field):
             setattr(fn, field, value)
     fn.updated_at = datetime.utcnow()
     db.commit()
