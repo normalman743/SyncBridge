@@ -35,8 +35,9 @@ def create_message(db: Session, block_id: int, user_id: int, text: str) -> Messa
 
 
 def update_message(db: Session, msg: Message, changes: dict) -> Message:
+    allowed_fields = {"text_content"}
     for field, value in changes.items():
-        if hasattr(msg, field):
+        if field in allowed_fields and hasattr(msg, field):
             setattr(msg, field, value)
     msg.updated_at = datetime.utcnow()
     db.commit()

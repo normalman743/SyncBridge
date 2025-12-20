@@ -45,7 +45,7 @@ def assert_can_view_form(form: Form, current: User):
             if form.created_by != current.id and form.developer_id != current.id:
                 raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
-        return
+        raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
 
 
 def assert_can_create_mainform(current: User):
@@ -68,7 +68,7 @@ def assert_can_update_mainform(form: Form, current: User):
         if form.status not in ("processing", "rewrite"):
             raise HTTPException(status_code=409, detail=error("Status not allow edit", "CONFLICT"))
     else:
-        return
+        raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
 
 
 def assert_can_update_subform(form: Form, current: User):
@@ -139,7 +139,7 @@ def assert_can_access_block(form: Form, current: User, db: Session):
         if form.developer_id != current.id and form.status != "available":
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
-        return
+        raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
 
 
 def assert_can_post_message(form: Form, current: User):

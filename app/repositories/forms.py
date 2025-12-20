@@ -62,8 +62,16 @@ def create_mainform(db: Session, client_id: int, payload: dict) -> Form:
 
 
 def update_form(db: Session, form: Form, changes: dict) -> Form:
+    allowed_fields = {
+        "title",
+        "message",
+        "budget",
+        "expected_time",
+        "status",
+        "developer_id",
+    }
     for field, value in changes.items():
-        if hasattr(form, field):
+        if field in allowed_fields and hasattr(form, field):
             setattr(form, field, value)
     form.updated_at = datetime.utcnow()
     db.commit()

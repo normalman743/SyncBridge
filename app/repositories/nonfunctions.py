@@ -31,8 +31,9 @@ def create(db: Session, payload: dict) -> NonFunction:
 
 
 def update(db: Session, nf: NonFunction, changes: dict) -> NonFunction:
+    allowed_fields = {"name", "level", "description", "status", "is_changed"}
     for field, value in changes.items():
-        if hasattr(nf, field):
+        if field in allowed_fields and hasattr(nf, field):
             setattr(nf, field, value)
     nf.updated_at = datetime.utcnow()
     db.commit()
