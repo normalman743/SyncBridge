@@ -1,20 +1,20 @@
 from pydantic import BaseModel
 
 
-class FunctionIn(BaseModel):
+class NonFunctionIn(BaseModel):
     form_id: int
     name: str
-    choice: str
+    level: str
     description: str
     status: str | None = "available"
     is_changed: bool | None = False
 
 
-class FunctionOut(BaseModel):
+class NonFunctionOut(BaseModel):
     id: int
     form_id: int
     name: str
-    choice: str
-    description: str | None
+    level: str
+    description: str
     status: str
     is_changed: bool

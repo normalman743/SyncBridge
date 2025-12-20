@@ -18,9 +18,14 @@ def list_for_user(db: Session, user: User, page: int, page_size: int, available_
         query = query.filter(Form.user_id == user.id)
     elif user.role == "developer":
         if available_only:
+            # Developer pulls “open” list when explicitly asking for available_only
             query = query.filter(Form.status == "available")
         else:
-            query = query.filter(or_(Form.developer_id == user.id, Form.status == "available"))
+            # Developer default view: only forms assigned to self in active/closed states
+            query = query.filter(
+                Form.developer_id == user.id,
+                Form.status.in_(["processing", "rewrite", "end", "error"]),
+            )
     else:
         if available_only:
             query = query.filter(Form.status == "available")

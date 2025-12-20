@@ -1,24 +1,23 @@
-from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
 
 class FormCreate(BaseModel):
     title: str
-    message: Optional[str]
-    budget: Optional[str]
-    expected_time: Optional[str]
+    message: str
+    budget: str
+    expected_time: str
 
 
 class FormOut(BaseModel):
     id: int
     type: str
-    title: Optional[str]
-    message: Optional[str]
-    budget: Optional[str]
-    expected_time: Optional[str]
-    status: Optional[str]
+    title: str | None
+    message: str | None
+    budget: str | None
+    expected_time: str | None
+    status: str | None
     user_id: int
-    developer_id: Optional[int]
-    subform_id: Optional[int]
+    developer_id: int | None
+    subform_id: int | None
     created_at: datetime
