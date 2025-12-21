@@ -59,6 +59,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.ID_ED25519 }}
+          port: ${{ secrets.VPS_SSH_PORT }}
 
           script: |
             /opt/syncbridge-backend/deploy.sh
