@@ -7,6 +7,7 @@ from app.api.v1.deps import get_db
 from app.models import Form, User
 from app.repositories import forms as form_repo
 from app.schemas import FormCreate, FormUpdate
+from app.services.audit import log_audit
 from app.services.permissions import (
     assert_can_create_mainform,
     assert_can_create_subform,
@@ -76,7 +77,15 @@ def update_form(id: int, payload: FormUpdate, current: User = Depends(get_curren
     changes = payload.dict(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
+    
+    # Capture old values for audit
+    old_data = {k: getattr(f, k, None) for k in changes.keys()}
+    
     form_repo.update_form(db, f, changes)
+    
+    # Audit log
+    log_audit(db, "form", f.id, "update", current.id, old_data, changes)
+    
     return success(None, "Form updated")
 
 @router.delete("/form/{id}")
@@ -127,7 +136,13 @@ def merge_subform(mainform_id: int, current: User = Depends(get_current_user), d
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
         raise HTTPException(status_code=403, detail=error("Only client or developer can merge", "FORBIDDEN"))
+    
+    subform_id = mainform.subform_id
     form_repo.merge_subform(db, mainform, subform)
+    
+    # Audit log
+    log_audit(db, "form", mainform.id, "merge_subform", current.id, {"subform_id": subform_id}, {"merged": True})
+    
     return success(None, "Subform merged")
 
 @router.put("/form/{id}/status")
@@ -166,6 +181,11 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
                 raise HTTPException(status_code=403, detail=error("Developer cannot perform this transition", "FORBIDDEN"))
     else:
         raise HTTPException(status_code=403, detail=error("Only client or developer can update status", "FORBIDDEN"))
+    old_status = f.status
     f.status = new_status
     db.add(f); db.commit(); db.refresh(f)
+    
+    # Audit log (isolated, failure won't break response)
+    log_audit(db, "form", f.id, "status_change", current.id, {"status": old_status}, {"status": new_status})
+    
     return success(None, "Status updated")

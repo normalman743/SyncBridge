@@ -11,6 +11,7 @@ from app.repositories import files as file_repo
 from app.repositories import forms as form_repo
 from app.repositories import messages as message_repo
 from app.schemas import MessageIn, MessageUpdate
+from app.services.audit import log_audit
 from app.services.permissions import assert_can_access_block, assert_can_edit_message, assert_can_post_message, get_current_user
 from app.services.websocket_manager import manager
 from app.utils import error, success
@@ -221,6 +222,9 @@ async def delete_message(
     block = block_repo.get_by_id(db, msg.block_id)
     room = _make_room_key(block.form_id, block.target_id if block.type == "function" else None,
                           block.target_id if block.type == "nonfunction" else None)
+
+    # Audit log before deletion
+    log_audit(db, "message", msg.id, "delete", current.id, {"text_content": msg.text_content[:100], "block_id": msg.block_id}, None)
 
     message_repo.delete_message(db, msg)
 

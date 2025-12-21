@@ -6,6 +6,7 @@ from app.models.nonfunction import NonFunction
 from app.models.block import Block
 from app.models.message import Message
 from app.models.file import File
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "Block",
     "Message",
     "File",
+    "AuditLog",
 ]

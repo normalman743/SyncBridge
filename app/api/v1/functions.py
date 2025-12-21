@@ -8,6 +8,7 @@ from app.models import Function, User
 from app.repositories import forms as form_repo
 from app.repositories import functions as function_repo
 from app.schemas import FunctionIn, FunctionUpdate
+from app.services.audit import log_audit
 from app.services.permissions import assert_can_add_function_to_form, assert_can_edit_function, assert_can_view_form, get_current_user
 from app.utils import error, success
 
@@ -44,6 +45,10 @@ def create_function(payload: FunctionIn, current: User = Depends(get_current_use
         raise HTTPException(status_code=404, detail=error("Form not found", "NOT_FOUND"))
     assert_can_add_function_to_form(form, current)
     f = function_repo.create(db, payload.dict())
+    
+    # Audit log
+    log_audit(db, "function", f.id, "create", current.id, None, {"name": f.name, "form_id": f.form_id})
+    
     return success({"id": f.id}, "Function created")
 
 @router.put("/function/{id}")
@@ -55,7 +60,15 @@ def update_function(id: int, payload: FunctionUpdate, current: User = Depends(ge
     changes = payload.dict(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
+    
+    # Capture old values for audit
+    old_data = {k: getattr(fn, k, None) for k in changes.keys()}
+    
     function_repo.update(db, fn, changes)
+    
+    # Audit log
+    log_audit(db, "function", fn.id, "update", current.id, old_data, changes)
+    
     return success(None, "Function updated")
 
 @router.delete("/function/{id}")
@@ -64,5 +77,9 @@ def delete_function(id: int, current: User = Depends(get_current_user), db: Sess
     if not fn:
         raise HTTPException(status_code=404, detail=error("Function not found", "NOT_FOUND"))
     assert_can_edit_function(fn, current, db)
+    
+    # Audit log before deletion
+    log_audit(db, "function", fn.id, "delete", current.id, {"name": fn.name, "form_id": fn.form_id}, None)
+    
     function_repo.delete(db, fn)
     return success(None, "Function deleted")

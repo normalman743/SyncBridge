@@ -7,6 +7,7 @@ from app.models import NonFunction, User
 from app.repositories import forms as form_repo
 from app.repositories import nonfunctions as nonfunction_repo
 from app.schemas import NonFunctionIn, NonFunctionUpdate
+from app.services.audit import log_audit
 from app.services.permissions import assert_can_add_function_to_form, assert_can_edit_function, assert_can_view_form, get_current_user
 from app.utils import error, success
 
@@ -41,6 +42,10 @@ def create_nonfunction(payload: NonFunctionIn, current: User = Depends(get_curre
         raise HTTPException(status_code=404, detail=error("Form not found", "NOT_FOUND"))
     assert_can_add_function_to_form(form, current)
     nf = nonfunction_repo.create(db, payload.dict())
+    
+    # Audit log
+    log_audit(db, "nonfunction", nf.id, "create", current.id, None, {"name": nf.name, "form_id": nf.form_id})
+    
     return success({"id": nf.id}, "NonFunction created")
 
 @router.put("/nonfunction/{id}")
@@ -52,7 +57,15 @@ def update_nonfunction(id: int, payload: NonFunctionUpdate, current: User = Depe
     changes = payload.dict(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail=error("No valid fields to update", "VALIDATION_ERROR"))
+    
+    # Capture old values for audit
+    old_data = {k: getattr(nf, k, None) for k in changes.keys()}
+    
     nonfunction_repo.update(db, nf, changes)
+    
+    # Audit log
+    log_audit(db, "nonfunction", nf.id, "update", current.id, old_data, changes)
+    
     return success(None, "NonFunction updated")
 
 @router.delete("/nonfunction/{id}")
@@ -61,5 +74,9 @@ def delete_nonfunction(id: int, current: User = Depends(get_current_user), db: S
     if not nf:
         raise HTTPException(status_code=404, detail=error("NonFunction not found", "NOT_FOUND"))
     assert_can_edit_function(nf, current, db)
+    
+    # Audit log before deletion
+    log_audit(db, "nonfunction", nf.id, "delete", current.id, {"name": nf.name, "form_id": nf.form_id}, None)
+    
     nonfunction_repo.delete(db, nf)
     return success(None, "NonFunction deleted")
