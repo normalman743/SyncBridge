@@ -155,33 +155,36 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
         raise HTTPException(status_code=404, detail=error("Not found", "NOT_FOUND"))
     # validate transition
     validate_status_transition(f.status, new_status)
-    # role-specific permission checks
+    
+    # Determine role permissions based on state machine rules
     if current.role == "client":
-        # client can set preview -> available or标记协商失败为 error（需是自己的单）
         if f.user_id != current.id:
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
+        # Client can: preview→available, processing→rewrite(or), rewrite→error(or)
         if (f.status, new_status) == ("preview", "available"):
             pass
-        elif new_status == "error" and f.status in ("processing", "rewrite"):
+        elif (f.status, new_status) == ("processing", "rewrite"):
+            pass
+        elif (f.status, new_status) == ("rewrite", "error"):
             pass
         else:
-            raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
+            raise HTTPException(status_code=403, detail=error("Client cannot perform this transition", "FORBIDDEN"))
+    
     elif current.role == "developer":
-        # developer taking order: available->processing allowed
-        if new_status == "processing" and f.status == "available":
+        # Developer taking order: available→processing
+        if (f.status, new_status) == ("available", "processing"):
             f.developer_id = current.id
         else:
-            # developer bound to form can: processing→{rewrite,end,error}, rewrite→{processing,error}
+            # Must be bound to form for other transitions
             if f.developer_id != current.id:
-                raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
-            valid_developer_transitions = [
-                ("processing", "rewrite"),
-                ("processing", "end"),
-                ("processing", "error"),
-                ("rewrite", "processing"),
-                ("rewrite", "error"),
-            ]
-            if (f.status, new_status) not in valid_developer_transitions:
+                raise HTTPException(status_code=403, detail=error("Developer not bound to form", "FORBIDDEN"))
+            # Developer can: processing→rewrite(or), rewrite→error(or)
+            # Cannot: processing→end (requires both), rewrite→processing (requires both)
+            if (f.status, new_status) == ("processing", "rewrite"):
+                pass
+            elif (f.status, new_status) == ("rewrite", "error"):
+                pass
+            else:
                 raise HTTPException(status_code=403, detail=error("Developer cannot perform this transition", "FORBIDDEN"))
     else:
         raise HTTPException(status_code=403, detail=error("Only client or developer can update status", "FORBIDDEN"))
