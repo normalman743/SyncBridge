@@ -144,3 +144,27 @@ def test_delete_file_only_sender(client, db_session):
     assert resp_ok.status_code == 200
     assert file_repo.get_by_id(db_session, file_id) is None
     assert not os.path.exists(rec.storage_path)
+
+
+def test_upload_file_message_not_found_and_too_large(client, db_session):
+    owner, owner_token = _make_user_with_token(client, db_session, "file-owner5@example.com", "client")
+    # Message id does not exist -> 404
+    resp_not_found = client.post(
+        f"{API_BASE}/file",
+        params={"message_id": 9999},
+        files={"file": ("missing.txt", b"noop", "text/plain")},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp_not_found.status_code == 404
+
+    # Large file (>10MB default) -> 400
+    form = _make_form(owner.id, db_session, status="processing", developer_id=None)
+    msg_id = _post_message(client, owner_token, form.id, text="big file")
+    big_content = b"x" * (11 * 1024 * 1024)  # ~11MB
+    resp_too_large = client.post(
+        f"{API_BASE}/file",
+        params={"message_id": msg_id},
+        files={"file": ("big.bin", big_content, "application/octet-stream")},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp_too_large.status_code == 400

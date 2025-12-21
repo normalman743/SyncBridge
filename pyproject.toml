@@ -43,3 +43,6 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+[tool.poetry]
+package-mode = false

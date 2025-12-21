@@ -177,6 +177,20 @@ def test_login_email_not_found(client):
     assert detail["code"] == "UNAUTHORIZED"
 
 
+def test_login_license_not_found(client, db_session):
+    user = create_user(db_session, email="nolicense@example.com", password="StrongPass123", role="client", is_active=1)
+    resp = client.post(
+        f"{AUTH_BASE}/login",
+        json={"email": user.email, "password": "StrongPass123"},
+    )
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["message"] == "License not found"
+    assert detail["code"] == "FORBIDDEN"
+    db_session.refresh(user)
+    assert user.is_active == 0
+
+
 # ---------- Me ----------
 
 def test_me_success(client, db_session):
@@ -261,3 +275,19 @@ def test_reactivate_wrong_password(client, db_session):
     assert resp.status_code == 401
     detail = resp.json()["detail"]
     assert detail["code"] == "UNAUTHORIZED"
+
+
+def test_reactivate_license_not_unused(client, db_session):
+    user = create_user(db_session, email="react2@example.com", password="StrongPass123", role="client", is_active=1)
+    active_lic = create_license(db_session, key="LIC-ACTIVE2", role="client", status="active", user=user)
+    resp = client.post(
+        f"{AUTH_BASE}/reactivate",
+        json={
+            "email": user.email,
+            "password": "StrongPass123",
+            "license_key": active_lic.license_key,
+        },
+    )
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["code"] == "FORBIDDEN"

@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, String, Integer, DateTime, Enum, JSON, Index, func
+from sqlalchemy import String, Integer, DateTime, Enum, JSON, Index, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
 
@@ -11,7 +11,8 @@ class AuditLog(Base):
         Index("ix_audit_logs_user_id", "user_id"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Use Integer for SQLite autoincrement compatibility
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     entity_type: Mapped[str] = mapped_column(
         Enum("form", "function", "nonfunction", "message", "file", name="audit_entity_type"),
         nullable=False,

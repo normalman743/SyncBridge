@@ -140,6 +140,49 @@ def test_update_nonfunction_conflict_and_developer_success(client, db_session):
     assert nf.status == "available"
 
 
+def test_update_nonfunction_no_changes_and_not_found(client, db_session):
+    owner, token = _make_user_with_token(client, db_session, "nf-nc@example.com", "client")
+    form = form_repo.create_mainform(
+        db_session,
+        owner.id,
+        {"title": "FormNFNC", "message": "M", "budget": "B", "expected_time": "T"},
+    )
+    nf = nonfunction_repo.create(
+        db_session,
+        {"form_id": form.id, "name": "NFNC", "level": "enterprise", "description": "Old", "status": "preview"},
+    )
+    resp_no_changes = client.put(
+        f"{API_BASE}/nonfunction/{nf.id}",
+        json={},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_no_changes.status_code == 400
+
+    resp_not_found = client.put(
+        f"{API_BASE}/nonfunction/9999",
+        json={"description": "x"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_not_found.status_code == 404
+
+
+def test_create_nonfunction_form_not_found(client, db_session):
+    user, token = _make_user_with_token(client, db_session, "nf-nf@example.com", "client")
+    payload = {
+        "form_id": 9999,
+        "name": "NFMissing",
+        "level": "lightweight",
+        "description": "Desc",
+        "status": "preview",
+    }
+    resp = client.post(
+        f"{API_BASE}/nonfunction",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+
+
 def test_delete_nonfunction_subform_only_creator(client, db_session):
     creator, creator_token = _make_user_with_token(client, db_session, "nf-subcreator@example.com", "developer")
     other, other_token = _make_user_with_token(client, db_session, "nf-subother@example.com", "developer")

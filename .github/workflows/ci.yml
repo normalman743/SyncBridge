@@ -1,0 +1,50 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.create true
+
+      - name: Cache Poetry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
+
+      - name: Install deps
+        run: poetry install --with dev
+
+      - name: Run tests
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          SECRET_KEY: "test-secret"
+          AUDIT_ENABLED: "false"
+          RESEND_API_KEY: "dummy"
+          RESEND_SENDER_EMAIL: "no-reply@example.com"
+          REMINDER_URGENT_MINUTES: "5"
+          REMINDER_NORMAL_HOURS: "48"
+          REMINDER_URGENT_CHECK_SECONDS: "60"
+          REMINDER_NORMAL_CHECK_SECONDS: "3600"
+        run: |
+          poetry run pytest --cov=app --cov-report=term-missing
+

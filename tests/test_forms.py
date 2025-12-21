@@ -211,6 +211,72 @@ def test_delete_form_preview_only(client, db_session):
     assert resp_delete_conflict.status_code == 409
 
 
+def test_form_status_and_approval_branches(client, db_session):
+    client_user, client_token = _make_user_with_token(client, db_session, "approveclient@example.com", "client")
+    dev_user, dev_token = _make_user_with_token(client, db_session, "approvedev@example.com", "developer")
+    form = form_repo.create_mainform(
+        db_session,
+        client_user.id,
+        {"title": "Approve", "message": "m", "budget": "b", "expected_time": "t"},
+    )
+    # client preview->available
+    client.put(
+        f"{FORMS_BASE}/form/{form.id}/status",
+        json={"status": "available"},
+        headers={"Authorization": f"Bearer {client_token}"},
+    )
+    # dev available->processing (bind dev)
+    client.put(
+        f"{FORMS_BASE}/form/{form.id}/status",
+        json={"status": "processing"},
+        headers={"Authorization": f"Bearer {dev_token}"},
+    )
+    # AND transition processing->end requires both approvals
+    resp_client_vote = client.put(
+        f"{FORMS_BASE}/form/{form.id}/status",
+        json={"status": "end"},
+        headers={"Authorization": f"Bearer {client_token}"},
+    )
+    assert resp_client_vote.status_code == 200
+    db_session.refresh(form)
+    assert form.status == "processing"  # waiting for dev
+    resp_dev_vote = client.put(
+        f"{FORMS_BASE}/form/{form.id}/status",
+        json={"status": "end"},
+        headers={"Authorization": f"Bearer {dev_token}"},
+    )
+    assert resp_dev_vote.status_code == 200
+    db_session.refresh(form)
+    assert form.status == "end"
+
+
+def test_update_form_no_changes_and_extra_field_rejected(client, db_session):
+    client_user, client_token = _make_user_with_token(client, db_session, "editclient@example.com", "client")
+    form = form_repo.create_mainform(
+        db_session,
+        client_user.id,
+        {"title": "E1", "message": "m", "budget": "b", "expected_time": "t"},
+    )
+    db_session.commit()
+    db_session.refresh(form)
+
+    # No changes provided -> 400
+    resp_no_changes = client.put(
+        f"{FORMS_BASE}/form/{form.id}",
+        json={},
+        headers={"Authorization": f"Bearer {client_token}"},
+    )
+    assert resp_no_changes.status_code == 400
+
+    # Extra field should be rejected by Pydantic (422)
+    resp_extra = client.put(
+        f"{FORMS_BASE}/form/{form.id}",
+        json={"title": "new", "unexpected": "x"},
+        headers={"Authorization": f"Bearer {client_token}"},
+    )
+    assert resp_extra.status_code == 422
+
+
 def test_create_subform_and_merge(client, db_session):
     client_user, client_token = _make_user_with_token(client, db_session, "subclient@example.com", "client")
     dev_user, dev_token = _make_user_with_token(client, db_session, "subdev@example.com", "developer")

@@ -141,6 +141,49 @@ def test_update_function_conflict_and_developer_success(client, db_session):
     assert fn.status == "available"
 
 
+def test_update_function_no_changes_and_not_found(client, db_session):
+    owner, token = _make_user_with_token(client, db_session, "fn-nc@example.com", "client")
+    form = form_repo.create_mainform(
+        db_session,
+        owner.id,
+        {"title": "FormNC", "message": "M", "budget": "B", "expected_time": "T"},
+    )
+    fn = function_repo.create(
+        db_session,
+        {"form_id": form.id, "name": "FnNC", "choice": "enterprise", "description": "Old", "status": "preview"},
+    )
+    resp_no_changes = client.put(
+        f"{API_BASE}/function/{fn.id}",
+        json={},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_no_changes.status_code == 400
+
+    resp_not_found = client.put(
+        f"{API_BASE}/function/9999",
+        json={"description": "x"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_not_found.status_code == 404
+
+
+def test_create_function_form_not_found(client, db_session):
+    user, token = _make_user_with_token(client, db_session, "fn-nf@example.com", "client")
+    payload = {
+        "form_id": 9999,
+        "name": "FnMissing",
+        "choice": "lightweight",
+        "description": "Desc",
+        "status": "preview",
+    }
+    resp = client.post(
+        f"{API_BASE}/function",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+
+
 def test_delete_function_subform_only_creator(client, db_session):
     creator, creator_token = _make_user_with_token(client, db_session, "fn-subcreator@example.com", "developer")
     other, other_token = _make_user_with_token(client, db_session, "fn-subother@example.com", "developer")
