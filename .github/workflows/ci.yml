@@ -48,3 +48,18 @@ jobs:
         run: |
           poetry run pytest --cov=app --cov-report=term-missing
 
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.ID_ED25519 }}
+
+          script: |
+            /opt/syncbridge-backend/deploy.sh
+
