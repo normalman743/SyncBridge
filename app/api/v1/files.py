@@ -4,6 +4,7 @@ import uuid
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db
@@ -52,8 +53,14 @@ def get_file(id: int, current: User = Depends(get_current_user), db: Session = D
     if not m:
         raise HTTPException(status_code=404, detail=error("Message not found", "NOT_FOUND"))
     assert_can_upload_file(m, current, db)
-    # return metadata (frontend can fetch path or backend can serve file route)
-    return success({"id": rec.id, "file_name": rec.file_name, "file_size": rec.file_size, "storage_path": rec.storage_path})
+    # stream the file if it exists on disk
+    if rec.storage_path and os.path.exists(rec.storage_path):
+        return FileResponse(
+            rec.storage_path,
+            media_type=rec.file_type or "application/octet-stream",
+            filename=rec.file_name,
+        )
+    raise HTTPException(status_code=404, detail=error("File content not found", "NOT_FOUND"))
 
 @router.delete("/file/{id}")
 def delete_file(id: int, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
