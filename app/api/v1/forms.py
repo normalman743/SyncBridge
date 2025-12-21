@@ -32,6 +32,7 @@ def list_forms(page: int = 1, page_size: int = 20, available_only: bool = False,
             "type": f.type,
             "title": f.title,
             "status": f.status,
+            "approval_flags": f.approval_flags,
             "subform_id": f.subform_id,
             "created_at": str(f.created_at)
         })
@@ -51,6 +52,7 @@ def get_form(id: int, db: Session = Depends(get_db), current: User = Depends(get
         "budget": f.budget,
         "expected_time": f.expected_time,
         "status": f.status,
+        "approval_flags": f.approval_flags,
         "user_id": f.user_id,
         "developer_id": f.developer_id,
         "subform_id": f.subform_id,
@@ -140,13 +142,10 @@ def merge_subform(mainform_id: int, current: User = Depends(get_current_user), d
     subform_id = mainform.subform_id
     form_repo.merge_subform(db, mainform, subform)
     
-    # Auto transition: rewrite → processing after successful merge (both parties agreed)
-    if mainform.status == "rewrite":
-        old_status = mainform.status
-        mainform.status = "processing"
-        db.add(mainform)
-        db.commit()
-        log_audit(db, "form", mainform.id, "auto_status_change", current.id, {"status": old_status}, {"status": "processing", "reason": "subform_merged"})
+    # Reset approval flags when subform is merged (negotiation complete)
+    mainform.approval_flags = 0
+    db.add(mainform)
+    db.commit()
     
     # Audit log
     log_audit(db, "form", mainform.id, "merge_subform", current.id, {"subform_id": subform_id}, {"merged": True})
@@ -164,17 +163,38 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
     # validate transition
     validate_status_transition(f.status, new_status)
     
+    # Check if this is an 'and' transition (requires approval from both parties)
+    is_and_transition = (f.status, new_status) in [
+        ("processing", "end"),      # both developer and client agree
+        ("rewrite", "processing"),  # both developer and client agree
+    ]
+    
     # Determine role permissions based on state machine rules
     if current.role == "client":
         if f.user_id != current.id:
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
         # Client can: preview→available, processing→rewrite(or), rewrite→error(or)
+        # And partial approval for: processing→end, rewrite→processing
         if (f.status, new_status) == ("preview", "available"):
-            pass
+            pass  # 'or' transition, execute directly
         elif (f.status, new_status) == ("processing", "rewrite"):
-            pass
+            pass  # 'or' transition, execute directly
         elif (f.status, new_status) == ("rewrite", "error"):
-            pass
+            pass  # 'or' transition, execute directly
+        elif is_and_transition:
+            # 'and' transition: set client approval flag (bit 2)
+            f.approval_flags |= 2
+            if f.approval_flags == 3:  # Both approved
+                f.status = new_status
+                f.approval_flags = 0
+                old_status = f.status if f.status != new_status else "rewrite" if new_status == "processing" else "processing"
+                db.add(f); db.commit(); db.refresh(f)
+                log_audit(db, "form", f.id, "status_change", current.id, {"status": old_status, "approval_flags": 0}, {"status": new_status, "approval_flags": 0})
+                return success({"status": f.status, "approval_flags": f.approval_flags}, "Status updated (both approved)")
+            else:
+                db.add(f); db.commit(); db.refresh(f)
+                log_audit(db, "form", f.id, "approval_vote", current.id, {"approval_flags": 0}, {"approval_flags": f.approval_flags})
+                return success({"status": f.status, "approval_flags": f.approval_flags}, "Awaiting developer approval")
         else:
             raise HTTPException(status_code=403, detail=error("Client cannot perform this transition", "FORBIDDEN"))
     
@@ -187,15 +207,31 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
             if f.developer_id != current.id:
                 raise HTTPException(status_code=403, detail=error("Developer not bound to form", "FORBIDDEN"))
             # Developer can: processing→rewrite(or), rewrite→error(or)
-            # Cannot: processing→end (requires both), rewrite→processing (requires both)
+            # And partial approval for: processing→end, rewrite→processing
             if (f.status, new_status) == ("processing", "rewrite"):
-                pass
+                pass  # 'or' transition, execute directly
             elif (f.status, new_status) == ("rewrite", "error"):
-                pass
+                pass  # 'or' transition, execute directly
+            elif is_and_transition:
+                # 'and' transition: set developer approval flag (bit 1)
+                f.approval_flags |= 1
+                if f.approval_flags == 3:  # Both approved
+                    f.status = new_status
+                    f.approval_flags = 0
+                    old_status = f.status if f.status != new_status else "rewrite" if new_status == "processing" else "processing"
+                    db.add(f); db.commit(); db.refresh(f)
+                    log_audit(db, "form", f.id, "status_change", current.id, {"status": old_status, "approval_flags": 0}, {"status": new_status, "approval_flags": 0})
+                    return success({"status": f.status, "approval_flags": f.approval_flags}, "Status updated (both approved)")
+                else:
+                    db.add(f); db.commit(); db.refresh(f)
+                    log_audit(db, "form", f.id, "approval_vote", current.id, {"approval_flags": 0}, {"approval_flags": f.approval_flags})
+                    return success({"status": f.status, "approval_flags": f.approval_flags}, "Awaiting client approval")
             else:
                 raise HTTPException(status_code=403, detail=error("Developer cannot perform this transition", "FORBIDDEN"))
     else:
         raise HTTPException(status_code=403, detail=error("Only client or developer can update status", "FORBIDDEN"))
+    
+    # Execute 'or' transitions directly
     old_status = f.status
     f.status = new_status
     db.add(f); db.commit(); db.refresh(f)
@@ -203,4 +239,4 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
     # Audit log (isolated, failure won't break response)
     log_audit(db, "form", f.id, "status_change", current.id, {"status": old_status}, {"status": new_status})
     
-    return success(None, "Status updated")
+    return success({"status": f.status, "approval_flags": f.approval_flags}, "Status updated")
