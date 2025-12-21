@@ -34,6 +34,9 @@ class Form(Base):
     )
 
     subform_id: Mapped[int | None] = mapped_column(ForeignKey("forms.id"), nullable=True)
+    
+    # Approval flags for 'and' transitions: 1=developer, 2=client, 3=both agreed
+    approval_flags: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[object] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

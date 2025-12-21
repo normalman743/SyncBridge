@@ -181,12 +181,12 @@ def assert_can_delete_file(file_rec: File, current: User, db: Session):
 
 def validate_status_transition(old_status: str, new_status: str):
     valid = {
-        "preview": ["available"],
-        "available": ["processing"],
-        "processing": ["rewrite", "end", "error"],
-        "rewrite": ["processing", "error"],
-        "end": [],
-        "error": [],
+        "preview": ["available"],  # client
+        "available": ["processing"],  # developer
+        "processing": ["rewrite", "end"],  # developer or client → rewrite; developer and client → end
+        "rewrite": ["processing", "error"],  # developer and client → processing; developer or client → error
+        "end": [],    # terminal
+        "error": [],  # terminal
     }
     if old_status not in valid or new_status not in valid[old_status]:
         raise HTTPException(status_code=409, detail=error("Invalid status transition", "CONFLICT"))
