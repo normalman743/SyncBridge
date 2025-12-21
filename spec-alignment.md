@@ -29,6 +29,17 @@
 - 审计/历史：无状态变更历史或进度/权重字段支持。
 - 邮件：整体未实现事件/超时邮件通知。
 
+## 文件预览与大文件兜底计划 (NEW)
+- 现状：上传校验 10MB；GET /file/{id} 仅返回 metadata/storage_path，不流式文件；无列表附件端点，无预览接口，无 >1GB 外链兜底。
+- 理想：
+  - GET /file/{id}/preview：若 file_size ≤ 1GB（阈值可配置）直接流式返回并设置 Content-Type；若超阈值返回 JSON 包含 external_url（可用 storage_path 或签名外链）。
+  - GET /files?message_id=...：列出某消息附件，含 id/name/size/type/external_url（如有）。
+  - 权限沿用现有文件访问规则（发送者/可访问该 block 的用户）。
+- 实现思路：
+  - 仓库层增加 file_size 阈值判断与 external_url 字段（可新增列或复用 storage_path 作为直链）。
+  - 路由新增 /file/{id}/preview、/files 列表；小文件用 FileResponse，超大文件仅返回链接。
+  - 文档更新返回格式，前端根据 external_url/流式响应选择展示/下载。
+
 ## Email & Block Reminder Plan (NEW)
 - 新增字段：blocks.last_message_at（消息创建时更新，初始可回填 created_at）；blocks.reminder_sent（布尔标记防重复提醒，发送后置 true）。
 - 新增接口/行为：

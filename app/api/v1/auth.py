@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,7 +7,7 @@ from app.api.v1.deps import get_db
 from app.models import User
 from app.repositories import licenses as license_repo
 from app.repositories import users as user_repo
-from app.schemas import LoginIn, RegisterIn
+from app.schemas import LoginIn, ReactivateIn, RegisterIn
 from app.utils import create_access_token, error, success
 from app.services.permissions import get_current_user
 
@@ -51,6 +53,13 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail=error("Invalid credentials", "UNAUTHORIZED"))
 
+    lic, err = license_repo.validate_active(db, user)
+    if err:
+        user.is_active = 0
+        user.updated_at = datetime.utcnow()
+        db.add(user); db.commit(); db.refresh(user)
+        raise HTTPException(status_code=403, detail=error("License invalid or expired", "FORBIDDEN"))
+
     token = create_access_token({"sub": user.id, "role": user.role})
 
     return success(
@@ -75,4 +84,29 @@ def me(current_user: User = Depends(get_current_user)):
             "role": current_user.role,
         },
         "OK"
+    )
+
+
+# ============================
+#   重新激活 Reactivate with new license
+# ============================
+@router.post("/reactivate")
+def reactivate(payload: ReactivateIn, db: Session = Depends(get_db)):
+    user = user_repo.authenticate(db, payload.email, payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail=error("Invalid credentials", "UNAUTHORIZED"))
+
+    lic, err = license_repo.activate_new_for_user(db, payload.license_key, user)
+    if err:
+        raise HTTPException(status_code=403, detail=error(err, "FORBIDDEN"))
+
+    token = create_access_token({"sub": user.id, "role": user.role})
+
+    return success(
+        {
+            "user_id": user.id,
+            "role": user.role,
+            "access_token": token,
+        },
+        "User reactivated",
     )

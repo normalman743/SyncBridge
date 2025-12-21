@@ -1,5 +1,5 @@
 from .common import Resp
-from .auth import RegisterIn, LoginIn, AuthMeOut
+from .auth import RegisterIn, LoginIn, AuthMeOut, ReactivateIn
 from .forms import FormCreate, FormOut, FormUpdate
 from .functions import FunctionIn, FunctionOut, FunctionUpdate
 from .nonfunctions import NonFunctionIn, NonFunctionOut, NonFunctionUpdate
@@ -11,6 +11,7 @@ __all__ = [
     "RegisterIn",
     "LoginIn",
     "AuthMeOut",
+    "ReactivateIn",
     "FormCreate",
     "FormOut",
     "FormUpdate",

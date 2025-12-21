@@ -19,3 +19,9 @@ class AuthMeOut(BaseModel):
     email: EmailStr
     display_name: Optional[str]
     role: Optional[str]
+
+
+class ReactivateIn(BaseModel):
+    email: EmailStr
+    password: str
+    license_key: str
