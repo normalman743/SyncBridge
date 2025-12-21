@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_db
 from app.models import Block, Message, User
 from app.repositories import blocks as block_repo
+from app.repositories import files as file_repo
 from app.repositories import forms as form_repo
 from app.repositories import messages as message_repo
 from app.schemas import MessageIn, MessageUpdate
@@ -50,16 +51,26 @@ def get_messages(
     block = block_repo.get_or_create(db, form_id, function_id, nonfunction_id)
     items, total = message_repo.list_messages(db, block.id, page, page_size)
 
-    out = [
-        {
-            "id": m.id,
-            "block_id": m.block_id,
-            "user_id": m.user_id,
-            "text_content": m.text_content,
-            "created_at": str(m.created_at),
-        }
-        for m in items
-    ]
+    out = []
+    for m in items:
+        attachments = file_repo.list_by_message(db, m.id)
+        out.append(
+            {
+                "id": m.id,
+                "block_id": m.block_id,
+                "user_id": m.user_id,
+                "text_content": m.text_content,
+                "created_at": str(m.created_at),
+                "files": [
+                    {
+                        "id": f.id,
+                        "file_name": f.file_name,
+                        "file_size": f.file_size,
+                    }
+                    for f in attachments
+                ],
+            }
+        )
 
     return success(
         {"messages": out, "page": page, "page_size": page_size, "total": total}

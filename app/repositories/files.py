@@ -24,3 +24,7 @@ def create_record(db: Session, message_id: int, filename: str, file_type: str, f
 def delete_record(db: Session, rec: File):
     db.delete(rec)
     db.commit()
+
+
+def list_by_message(db: Session, message_id: int) -> list[File]:
+    return db.query(File).filter(File.message_id == message_id).all()
