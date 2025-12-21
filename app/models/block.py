@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, DateTime, Enum, ForeignKey, func, Index
+from sqlalchemy import Integer, DateTime, Enum, ForeignKey, func, Index, SmallInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -22,6 +22,9 @@ class Block(Base):
         default="general",
     )
     target_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    last_message_at: Mapped[object] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    reminder_sent: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
 
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
