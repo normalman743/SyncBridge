@@ -14,6 +14,7 @@ class File(Base):
     file_name: Mapped[str] = mapped_column(String(128), nullable=False)
     file_type: Mapped[str] = mapped_column(String(32), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_ext: Mapped[str] = mapped_column(String(16), nullable=False, default="")
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, server_default=func.now())

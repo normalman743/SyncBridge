@@ -44,10 +44,12 @@ def upload_file(message_id: int, file: UploadFile = File(...), current: User = D
             ),
         )
     filename = f"{uuid.uuid4().hex}_{file.filename}"
+    _, ext = os.path.splitext(file.filename or "")
+    ext = ext.lstrip(".").lower()
     path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
         f.write(contents)
-    rec = file_repo.create_record(db, message_id, file.filename, file.content_type or "", size, path)
+    rec = file_repo.create_record(db, message_id, file.filename, file.content_type or "", size, path, ext)
     return success({"file_id": rec.id}, "File uploaded")
 
 @router.get("/file/{id}")

@@ -67,6 +67,7 @@ def get_messages(
                         "id": f.id,
                         "file_name": f.file_name,
                         "file_size": f.file_size,
+                        "file_ext": f.file_ext,
                     }
                     for f in attachments
                 ],
