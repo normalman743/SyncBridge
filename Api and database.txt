@@ -91,6 +91,25 @@ ________________
 	ENUM('client','developer','admin') NULL
 	最终角色，激活 license 后写入
 	is_active
+
+
+  2.5.3 PUT /api/v1/block/{id}/status
+  Body
+  {
+    "status": "urgent" | "normal"
+  }
+
+  行为
+                                                                                                                                                                                         * 更新 block.status，用于控制提醒节奏（urgent=5 分钟无回复提醒；normal=48 小时无回复提醒）。
+                                                                                                                                                                                         * 每次更新会重置 reminder_sent=0 并刷新 last_message_at=now。
+
+  前置条件
+                                                                                                                                                                                         * 必须登录。
+                                                                                                                                                                                         * 权限与消息一致：只能访问有权查看的 form 对应 block。
+
+  返回
+  {"status":"success","message":"Block status updated","data":null}
+
 	TINYINT
 	账号是否激活
 	created_at
