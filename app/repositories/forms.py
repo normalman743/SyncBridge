@@ -111,3 +111,54 @@ def create_subform(db: Session, mainform: Form, creator_id: int, payload: dict) 
     db.commit()
 
     return sub, None
+
+
+def merge_subform(db: Session, mainform: Form, subform: Form) -> Form:
+    """Merge subform content into mainform, copy functions/nonfunctions with is_changed reset, delete subform, set mainform to processing."""
+    from app.models import Function, NonFunction
+
+    # Overwrite mainform fields from subform
+    mainform.title = subform.title
+    mainform.message = subform.message
+    mainform.budget = subform.budget
+    mainform.expected_time = subform.expected_time
+
+    # Delete old mainform functions/nonfunctions first
+    db.query(Function).filter(Function.form_id == mainform.id).delete()
+    db.query(NonFunction).filter(NonFunction.form_id == mainform.id).delete()
+
+    # Copy functions from subform to mainform, resetting is_changed
+    subform_functions = db.query(Function).filter(Function.form_id == subform.id).all()
+    for sf in subform_functions:
+        new_func = Function(
+            form_id=mainform.id,
+            name=sf.name,
+            choice=sf.choice,
+            description=sf.description,
+            status=sf.status,
+            is_changed=0,
+        )
+        db.add(new_func)
+
+    # Copy nonfunctions from subform to mainform, resetting is_changed
+    subform_nonfunctions = db.query(NonFunction).filter(NonFunction.form_id == subform.id).all()
+    for snf in subform_nonfunctions:
+        new_nf = NonFunction(
+            form_id=mainform.id,
+            name=snf.name,
+            level=snf.level,
+            description=snf.description,
+            status=snf.status,
+            is_changed=0,
+        )
+        db.add(new_nf)
+
+    # Unlink and delete subform
+    mainform.subform_id = None
+    mainform.status = "processing"
+    mainform.updated_at = datetime.utcnow()
+    db.delete(subform)
+    db.commit()
+    db.refresh(mainform)
+
+    return mainform
