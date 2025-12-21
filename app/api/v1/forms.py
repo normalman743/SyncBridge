@@ -140,6 +140,14 @@ def merge_subform(mainform_id: int, current: User = Depends(get_current_user), d
     subform_id = mainform.subform_id
     form_repo.merge_subform(db, mainform, subform)
     
+    # Auto transition: rewrite → processing after successful merge (both parties agreed)
+    if mainform.status == "rewrite":
+        old_status = mainform.status
+        mainform.status = "processing"
+        db.add(mainform)
+        db.commit()
+        log_audit(db, "form", mainform.id, "auto_status_change", current.id, {"status": old_status}, {"status": "processing", "reason": "subform_merged"})
+    
     # Audit log
     log_audit(db, "form", mainform.id, "merge_subform", current.id, {"subform_id": subform_id}, {"merged": True})
     

@@ -3,14 +3,13 @@ from contextlib import suppress
 
 from fastapi import FastAPI
 
-from app.api.v1 import auth, files, forms, forms_status, functions, messages, nonfunctions, ws
+from app.api.v1 import auth, files, forms, functions, messages, nonfunctions, ws
 from app.services.reminders import start_urgent_loop, start_normal_loop
 
 app = FastAPI()
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(forms.router, prefix="/api/v1")
-app.include_router(forms_status.router, prefix="/api/v1")
 app.include_router(functions.router, prefix="/api/v1")
 app.include_router(nonfunctions.router, prefix="/api/v1")
 app.include_router(messages.router, prefix="/api/v1")
