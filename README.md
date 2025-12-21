@@ -23,6 +23,14 @@ Python 3.10.13
   - normal: no reply in 48 hours
 - File upload (≤ 10MB) with preview endpoints
 
+## Environment Variables
+- **`RESEND_API_KEY`**: Resend API key for sending emails.
+- **`RESEND_SENDER_EMAIL`**: Sender email address (e.g., bridge-no-reply@icu.584743.xyz).
+- **`REMINDER_URGENT_MINUTES`**: Minutes threshold before urgent reminder (default: `5`).
+- **`REMINDER_NORMAL_HOURS`**: Hours threshold before normal reminder (default: `48`).
+- **`REMINDER_URGENT_CHECK_SECONDS`**: Urgent loop interval seconds (default: `60`).
+- **`REMINDER_NORMAL_CHECK_SECONDS`**: Normal loop interval seconds (default: `3600`).
+
 ## Directory Structure
 ```text
 syncbridge-backend/
