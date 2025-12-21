@@ -11,6 +11,7 @@ from app.api.v1.deps import get_db
 from app.models import File as FileModel, Message, User
 from app.repositories import files as file_repo
 from app.repositories import messages as message_repo
+from app.services.audit import log_audit
 from app.services.permissions import assert_can_delete_file, assert_can_upload_file, get_current_user
 from app.utils import error, success
 
@@ -74,6 +75,10 @@ def delete_file(id: int, current: User = Depends(get_current_user), db: Session 
     if not rec:
         raise HTTPException(status_code=404, detail=error("Not found", "NOT_FOUND"))
     assert_can_delete_file(rec, current, db)
+    
+    # Audit log before deletion
+    log_audit(db, "file", rec.id, "delete", current.id, {"file_name": rec.file_name, "file_size": rec.file_size, "message_id": rec.message_id}, None)
+    
     # delete file from disk if exists
     try:
         if rec.storage_path and os.path.exists(rec.storage_path):

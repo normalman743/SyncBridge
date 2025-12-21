@@ -3,6 +3,7 @@ Isolated audit logging service.
 All writes are wrapped in try-except to ensure failures never interrupt main business logic.
 """
 import logging
+import os
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -10,6 +11,9 @@ from sqlalchemy.orm import Session
 from app.models.audit_log import AuditLog
 
 logger = logging.getLogger(__name__)
+
+# Read audit toggle from environment
+AUDIT_ENABLED = os.getenv("AUDIT_ENABLED", "true").lower() in ("true", "1", "yes")
 
 
 def log_audit(
@@ -33,6 +37,9 @@ def log_audit(
         old_data: Previous state snapshot (JSON-serializable dict)
         new_data: New state snapshot (JSON-serializable dict)
     """
+    if not AUDIT_ENABLED:
+        return
+    
     try:
         audit = AuditLog(
             entity_type=entity_type,
