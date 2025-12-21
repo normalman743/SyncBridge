@@ -179,7 +179,6 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
                 ("processing", "end"),
                 ("processing", "error"),
                 ("rewrite", "processing"),
-                ("rewrite", "end"),
                 ("rewrite", "error"),
             ]
             if (f.status, new_status) not in valid_developer_transitions:

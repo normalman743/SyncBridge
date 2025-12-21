@@ -184,7 +184,7 @@ def validate_status_transition(old_status: str, new_status: str):
         "preview": ["available"],
         "available": ["processing"],
         "processing": ["rewrite", "end", "error"],
-        "rewrite": ["processing", "end", "error"],
+        "rewrite": ["processing", "error"],
         "end": [],
         "error": [],
     }
