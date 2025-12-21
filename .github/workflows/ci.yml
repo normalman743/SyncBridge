@@ -31,8 +31,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
 
-      - name: Install dependencies
-        run: poetry install --with dev
+      - name: Install dependencies (no root package)
+        run: poetry install --with dev --no-root
 
       - name: Run tests
         env:
