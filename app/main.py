@@ -1,12 +1,29 @@
+import os
 import asyncio
 from contextlib import suppress
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import auth, files, forms, functions, messages, nonfunctions, ws
 from app.services.reminders import start_urgent_loop, start_normal_loop
 
 app = FastAPI()
+
+# CORS configuration via env: CORS_ALLOW_ORIGINS="https://a.com,https://b.com" or "*" (default)
+_cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+if _cors_origins.strip() == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(forms.router, prefix="/api/v1")
