@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -23,6 +24,10 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     if user_repo.get_by_email(db, payload.email):
         raise HTTPException(status_code=409, detail=error("Email exists", "CONFLICT"))
 
+    # 简单口令强度：>=8 且含字母和数字
+    if len(payload.password) < 8 or not re.search(r"[A-Za-z]", payload.password) or not re.search(r"\d", payload.password):
+        raise HTTPException(status_code=400, detail=error("Password too weak (need >=8 chars with letters and digits)", "VALIDATION_ERROR"))
+
     user = user_repo.create(db, payload.email, payload.password, payload.display_name)
 
     license_row, err = license_repo.activate(db, payload.license_key, user)
@@ -38,6 +43,8 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
             "user_id": user.id,
             "role": user.role,
             "access_token": token,
+            "license_status": license_row.status,
+            "license_expires_at": license_row.expires_at,
         },
         "User registered and activated",
     )
@@ -53,19 +60,33 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail=error("Invalid credentials", "UNAUTHORIZED"))
 
+    # 用户被停用则直接阻断
+    if user.is_active == 0:
+        raise HTTPException(status_code=403, detail=error("User is inactive", "FORBIDDEN"))
+
     lic, err = license_repo.validate_active(db, user)
     if err:
         user.is_active = 0
         user.updated_at = datetime.utcnow()
         db.add(user); db.commit(); db.refresh(user)
-        raise HTTPException(status_code=403, detail=error("License invalid or expired", "FORBIDDEN"))
+        # 细分错误文案，仍使用 FORBIDDEN 代码
+        msg = "License invalid or expired"
+        if "expired" in err.lower():
+            msg = "License expired"
+        elif "not active" in err.lower():
+            msg = "License not active"
+        elif "not found" in err.lower():
+            msg = "License not found"
+        raise HTTPException(status_code=403, detail=error(msg, "FORBIDDEN"))
 
-    token = create_access_token({"sub": user.id, "role": user.role})
+    token = create_access_token({"sub": user.id, "role": user.role, "license_status": lic.status})
 
     return success(
         {
             "access_token": token,
             "role": user.role,
+            "license_status": lic.status,
+            "license_expires_at": lic.expires_at,
         },
         "Login success",
     )
