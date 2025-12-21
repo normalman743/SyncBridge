@@ -29,6 +29,8 @@ def create_access_token(data: dict, expires_delta: int | None = None) -> str:
     to_encode = data.copy()
     if to_encode.get("sub") is None:
         raise ValueError("Token payload must include 'sub'")
+    # JWT spec recommends subject as string; cast to string to avoid decode errors
+    to_encode["sub"] = str(to_encode["sub"])
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=(expires_delta or ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "iat": now})
