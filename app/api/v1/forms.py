@@ -126,8 +126,7 @@ def merge_subform(mainform_id: int, current: User = Depends(get_current_user), d
         if mainform.developer_id != current.id:
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
-        # admin allowed
-        pass
+        raise HTTPException(status_code=403, detail=error("Only client or developer can merge", "FORBIDDEN"))
     form_repo.merge_subform(db, mainform, subform)
     return success(None, "Subform merged")
 
@@ -166,8 +165,7 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
             if (f.status, new_status) not in valid_developer_transitions:
                 raise HTTPException(status_code=403, detail=error("Developer cannot perform this transition", "FORBIDDEN"))
     else:
-        # admin allowed
-        pass
+        raise HTTPException(status_code=403, detail=error("Only client or developer can update status", "FORBIDDEN"))
     f.status = new_status
     db.add(f); db.commit(); db.refresh(f)
     return success(None, "Status updated")

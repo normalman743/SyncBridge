@@ -74,7 +74,7 @@ def assert_can_update_mainform(form: Form, current: User):
 def assert_can_update_subform(form: Form, current: User):
     if form.type != "subform":
         raise HTTPException(status_code=403, detail=error("Not a subform", "FORBIDDEN"))
-    if form.created_by != current.id and (current.role is None or current.role != "admin"):
+    if form.created_by != current.id:
         raise HTTPException(status_code=403, detail=error("Only creator can modify subform", "FORBIDDEN"))
 
 
@@ -85,7 +85,7 @@ def assert_can_delete_form(form: Form, current: User, db: Session):
         if form.status != "preview":
             raise HTTPException(status_code=409, detail=error("Mainform can be deleted only in preview", "CONFLICT"))
     else:
-        if form.created_by != current.id and (current.role is None or current.role != "admin"):
+        if form.created_by != current.id:
             raise HTTPException(status_code=403, detail=error("Cannot delete subform", "FORBIDDEN"))
 
 
@@ -111,7 +111,7 @@ def assert_can_add_function_to_form(form: Form, current: User):
         if current.role == "developer" and form.developer_id != current.id and form.status != "available":
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
-        if form.created_by != current.id and (current.role is None or current.role != "admin"):
+        if form.created_by != current.id:
             raise HTTPException(status_code=403, detail=error("Only subform creator can add functions", "FORBIDDEN"))
 
 
@@ -129,7 +129,7 @@ def assert_can_edit_function(fn: Function | NonFunction, current: User, db: Sess
             if form.developer_id != current.id:
                 raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     else:
-        if form.created_by != current.id and (current.role is None or current.role != "admin"):
+        if form.created_by != current.id:
             raise HTTPException(status_code=403, detail=error("Only subform creator can edit its functions", "FORBIDDEN"))
 
 
@@ -154,8 +154,8 @@ def assert_can_post_message(form: Form, current: User):
 
 
 def assert_can_edit_message(msg: Message, current: User):
-    if msg.user_id != current.id and (current.role is None or current.role != "admin"):
-        raise HTTPException(status_code=403, detail=error("Only sender or admin can modify message", "FORBIDDEN"))
+    if msg.user_id != current.id:
+        raise HTTPException(status_code=403, detail=error("Only sender can modify message", "FORBIDDEN"))
 
 
 # ---------- Files ----------
@@ -173,8 +173,8 @@ def assert_can_delete_file(file_rec: File, current: User, db: Session):
     msg = db.query(Message).filter(Message.id == file_rec.message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail=error("Message not found", "NOT_FOUND"))
-    if msg.user_id != current.id and (current.role is None or current.role != "admin"):
-        raise HTTPException(status_code=403, detail=error("Only sender or admin can delete file", "FORBIDDEN"))
+    if msg.user_id != current.id:
+        raise HTTPException(status_code=403, detail=error("Only sender can delete file", "FORBIDDEN"))
 
 
 # ---------- Status transition validator ----------
