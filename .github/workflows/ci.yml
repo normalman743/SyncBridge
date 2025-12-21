@@ -63,3 +63,6 @@ jobs:
           script: |
             /opt/syncbridge-backend/deploy.sh
 
+
+
+            
