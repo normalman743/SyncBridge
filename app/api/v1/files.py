@@ -35,7 +35,13 @@ def upload_file(message_id: int, file: UploadFile = File(...), current: User = D
     contents = file.file.read()
     size = len(contents)
     if size > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=error("File too large", "VALIDATION_ERROR"))
+        raise HTTPException(
+            status_code=400,
+            detail=error(
+                "File too large; compress under 10MB or provide an external link (Drive/GitHub)",
+                "VALIDATION_ERROR",
+            ),
+        )
     filename = f"{uuid.uuid4().hex}_{file.filename}"
     path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
