@@ -108,6 +108,31 @@ def test_update_message_only_sender(client, db_session):
     assert msg.text_content == "updated"
 
 
+def test_update_message_no_changes_and_not_found(client, db_session):
+    owner, owner_token = _make_user_with_token(client, db_session, "msg-owner6@example.com", "client")
+    form = _make_form(owner.id, db_session, status="processing", developer_id=None)
+    resp_msg = client.post(
+        f"{API_BASE}/message",
+        json={"form_id": form.id, "text_content": "original"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    msg_id = resp_msg.json()["data"]["message_id"]
+
+    resp_no_changes = client.put(
+        f"{API_BASE}/message/{msg_id}",
+        json={},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp_no_changes.status_code == 400
+
+    resp_not_found = client.put(
+        f"{API_BASE}/message/9999",
+        json={"text_content": "x"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp_not_found.status_code == 404
+
+
 def test_delete_message_only_sender(client, db_session):
     owner, owner_token = _make_user_with_token(client, db_session, "msg-owner4@example.com", "client")
     dev, dev_token = _make_user_with_token(client, db_session, "msg-dev4@example.com", "developer")
@@ -135,6 +160,15 @@ def test_delete_message_only_sender(client, db_session):
     )
     assert resp_ok.status_code == 200
     assert message_repo.get_by_id(db_session, msg_id) is None
+
+
+def test_delete_message_not_found(client, db_session):
+    owner, owner_token = _make_user_with_token(client, db_session, "msg-owner8@example.com", "client")
+    resp = client.delete(
+        f"{API_BASE}/message/9999",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp.status_code == 404
 
 
 def test_update_block_status(client, db_session):
@@ -169,3 +203,21 @@ def test_update_block_status(client, db_session):
     assert resp_ok.status_code == 200
     db_session.refresh(block)
     assert block.status == "urgent"
+
+
+def test_get_messages_form_not_found_and_forbidden(client, db_session):
+    owner, owner_token = _make_user_with_token(client, db_session, "msg-owner7@example.com", "client")
+    other, other_token = _make_user_with_token(client, db_session, "msg-other@example.com", "client")
+    form = _make_form(owner.id, db_session, status="processing", developer_id=None)
+
+    resp_not_found = client.get(
+        f"{API_BASE}/messages?form_id=9999",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert resp_not_found.status_code == 404
+
+    resp_forbidden = client.get(
+        f"{API_BASE}/messages?form_id={form.id}",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+    assert resp_forbidden.status_code == 403
