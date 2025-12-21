@@ -157,10 +157,14 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
     validate_status_transition(f.status, new_status)
     # role-specific permission checks
     if current.role == "client":
-        # client can set preview -> available or set error on own form
+        # client can set preview -> available or标记协商失败为 error（需是自己的单）
         if f.user_id != current.id:
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
-        if not (f.status == "preview" and new_status == "available") and new_status != "error":
+        if (f.status, new_status) == ("preview", "available"):
+            pass
+        elif new_status == "error" and f.status in ("processing", "rewrite"):
+            pass
+        else:
             raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
     elif current.role == "developer":
         # developer taking order: available->processing allowed
@@ -175,6 +179,7 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
                 ("processing", "end"),
                 ("processing", "error"),
                 ("rewrite", "processing"),
+                ("rewrite", "end"),
                 ("rewrite", "error"),
             ]
             if (f.status, new_status) not in valid_developer_transitions:
