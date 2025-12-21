@@ -96,6 +96,10 @@ def assert_can_create_subform(mainform: Form, current: User):
         raise HTTPException(status_code=409, detail=error("Subform exists", "CONFLICT"))
     if mainform.status not in ("available", "processing", "rewrite"):
         raise HTTPException(status_code=409, detail=error("Status not allow subform", "CONFLICT"))
+    # Enforce role-based binding: developer must be bound to mainform
+    if current.role == "developer":
+        if mainform.developer_id != current.id:
+            raise HTTPException(status_code=403, detail=error("Developer not bound to this mainform", "FORBIDDEN"))
 
 
 # ---------- Function / NonFunction permissions ----------

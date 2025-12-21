@@ -80,7 +80,7 @@ def update_form(id: int, payload: FormUpdate, current: User = Depends(get_curren
     return success(None, "Form updated")
 
 @router.delete("/form/{id}")
-def delete_form(id: int, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_form(id: int, set_error: bool = False, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     f = form_repo.get(db, id)
     if not f:
         raise HTTPException(status_code=404, detail=error("Not found", "NOT_FOUND"))
@@ -90,7 +90,8 @@ def delete_form(id: int, current: User = Depends(get_current_user), db: Session 
         main = db.query(Form).filter(Form.subform_id == f.id).first()
         if main:
             main.subform_id = None
-            main.status = "processing"
+            # set_error param allows setting mainform to error on negotiation failure
+            main.status = "error" if set_error else "processing"
             db.add(main); db.commit()
     form_repo.delete_form(db, f)
     return success(None, "Form deleted")
@@ -105,6 +106,30 @@ def create_subform(id: int, payload: FormCreate, current: User = Depends(get_cur
     if err:
         raise HTTPException(status_code=409, detail=error("Conflict", "CONFLICT"))
     return success({"subform_id": s.id}, "Subform created")
+
+@router.post("/form/{mainform_id}/subform/merge")
+def merge_subform(mainform_id: int, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    mainform = form_repo.get(db, mainform_id)
+    if not mainform or mainform.type != "mainform":
+        raise HTTPException(status_code=400, detail=error("Invalid mainform", "VALIDATION_ERROR"))
+    if mainform.subform_id is None:
+        raise HTTPException(status_code=404, detail=error("No subform to merge", "NOT_FOUND"))
+    subform = form_repo.get(db, mainform.subform_id)
+    if not subform:
+        raise HTTPException(status_code=404, detail=error("Subform not found", "NOT_FOUND"))
+    # Permission: client can merge if they own the form
+    if current.role == "client":
+        if mainform.user_id != current.id:
+            raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
+    elif current.role == "developer":
+        # Developer can merge if they're bound to the mainform
+        if mainform.developer_id != current.id:
+            raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
+    else:
+        # admin allowed
+        pass
+    form_repo.merge_subform(db, mainform, subform)
+    return success(None, "Subform merged")
 
 @router.put("/form/{id}/status")
 def update_status(id: int, body: dict = Body(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -128,8 +153,18 @@ def update_status(id: int, body: dict = Body(...), current: User = Depends(get_c
         if new_status == "processing" and f.status == "available":
             f.developer_id = current.id
         else:
+            # developer bound to form can: processing→{rewrite,end,error}, rewrite→{processing,error}
             if f.developer_id != current.id:
                 raise HTTPException(status_code=403, detail=error("Forbidden", "FORBIDDEN"))
+            valid_developer_transitions = [
+                ("processing", "rewrite"),
+                ("processing", "end"),
+                ("processing", "error"),
+                ("rewrite", "processing"),
+                ("rewrite", "error"),
+            ]
+            if (f.status, new_status) not in valid_developer_transitions:
+                raise HTTPException(status_code=403, detail=error("Developer cannot perform this transition", "FORBIDDEN"))
     else:
         # admin allowed
         pass
