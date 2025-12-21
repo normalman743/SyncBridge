@@ -91,6 +91,9 @@ async def post_message(
 
     msg = message_repo.create_message(db, block.id, current.id, payload.text_content)
 
+    # Track activity time for reminder checks
+    block_repo.touch_activity(db, block)
+
     # ========== WebSocket Broadcast ==========
     room = _make_room_key(payload.form_id, payload.function_id, payload.nonfunction_id)
 
@@ -111,6 +114,34 @@ async def post_message(
     # =========================================
 
     return success({"message_id": msg.id}, "Message sent")
+
+
+# ============================================================
+# UPDATE block status (normal/urgent)
+# ============================================================
+@router.put("/block/{id}/status")
+def update_block_status(
+    id: int,
+    body: dict,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    status = body.get("status") if body else None
+    if status not in ("normal", "urgent"):
+        raise HTTPException(status_code=400, detail=error("Invalid status", "VALIDATION_ERROR"))
+
+    block = block_repo.get_by_id(db, id)
+    if not block:
+        raise HTTPException(status_code=404, detail=error("Block not found", "NOT_FOUND"))
+
+    form = form_repo.get(db, block.form_id)
+    if not form:
+        raise HTTPException(status_code=404, detail=error("Form not found", "NOT_FOUND"))
+
+    assert_can_access_block(form, current, db)
+
+    block_repo.update_status(db, block, status)
+    return success(None, "Block status updated")
 
 
 # ============================================================

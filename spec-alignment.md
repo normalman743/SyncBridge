@@ -28,3 +28,14 @@
 - 文件：10MB 校验符合规范；缺少预览接口、1GB 外链兜底方案。
 - 审计/历史：无状态变更历史或进度/权重字段支持。
 - 邮件：整体未实现事件/超时邮件通知。
+
+## Email & Block Reminder Plan (NEW)
+- 新增字段：blocks.last_message_at（消息创建时更新，初始可回填 created_at）；blocks.reminder_sent（布尔标记防重复提醒，发送后置 true）。
+- 新增接口/行为：
+  - Block status 更新端点（normal/urgent 切换）；重置 reminder_sent=false 并可刷新 last_message_at。
+  - 消息创建时同时写 block.last_message_at=now、reminder_sent=false。
+- 调度策略：后台定时扫描 blocks。
+  - urgent：last_message_at 超 5 分钟未更新则发送一次提醒，随后 reminder_sent=true。
+  - normal：last_message_at 超 48 小时未更新则发送一次提醒，随后 reminder_sent=true。
+- 邮件发送：Resend，env 读取 RESEND_API_KEY，From 使用 bridge-no-reply@icu.584743.xyz，收件人按 form 关联的 client/developer。
+- 范围：新增内容不改动现有段落，便于团队识别新增计划。

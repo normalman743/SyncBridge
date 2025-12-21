@@ -26,13 +26,35 @@ def get_or_create(db: Session, form_id: int, function_id: int | None = None, non
     if block:
         return block
 
+    now = datetime.utcnow()
     block = Block(
         form_id=form_id,
         type=block_type,
         target_id=target_id,
         status="normal",
-        created_at=datetime.utcnow(),
+        created_at=now,
+        last_message_at=now,
+        reminder_sent=0,
     )
+    db.add(block)
+    db.commit()
+    db.refresh(block)
+    return block
+
+
+def touch_activity(db: Session, block: Block) -> Block:
+    block.last_message_at = datetime.utcnow()
+    block.reminder_sent = 0
+    db.add(block)
+    db.commit()
+    db.refresh(block)
+    return block
+
+
+def update_status(db: Session, block: Block, status: str) -> Block:
+    block.status = status
+    block.reminder_sent = 0
+    block.last_message_at = datetime.utcnow()
     db.add(block)
     db.commit()
     db.refresh(block)
