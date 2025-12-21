@@ -2,16 +2,9 @@
 
 ## 状态机与协商
 - 规范：主单状态 preview/available/processing/rewrite/end/error，error 终止；典型流转：client preview→available，developer available→processing（接单）；processing→rewrite（配合 subform）；rewrite→processing（合并）；任意阶段协商失败可设 error；processing→end（见 Api and database.txt 2.2.6-2.2.7, models.md 660-707）。
-- """✅ 状态转换已完整实现"""：
-  - """✅ [forms.py#L133-L172](app/api/v1/forms.py#L133-L172) PUT /form/{id}/status 实现所有状态转换，包含完整的 client 和 developer 角色权限校验"""
-  - """✅ [forms.py#L150-L167](app/api/v1/forms.py#L150-L167) developer 可执行 processing→{rewrite,end,error}、rewrite→{processing,error}"""
-  - """✅ [forms.py#L143-L149](app/api/v1/forms.py#L143-L149) client 可执行 preview→available 和任意阶段设置 error"""
-- 协商功能：
-  - """✅ [forms.py#L99-L108](app/api/v1/forms.py#L99-L108) POST /form/{id}/subform 创建 subform，自动设置 mainform.status=rewrite"""
-  - """✅ [forms.py#L111-L130](app/api/v1/forms.py#L111-L130) POST /form/{mainform_id}/subform/merge 实现协商合并（覆盖 mainform，删除 subform，状态回 processing），包含权限校验"""
-  - """✅ [forms.py#L84-L98](app/api/v1/forms.py#L84-L98) DELETE /form/{id}?set_error=true 协商失败可明确设置 mainform.status=error"""
-  - """✅ [repositories/forms.py](app/repositories/forms.py) merge_subform 实现内容合并逻辑"""
-- 剩余缺口：is_changed 字段未在 API 层强制校验（subform 才能设为 1），需在创建/更新 function/nonfunction 时添加表单类型检查。
+- 现状：状态表在 [app/services/permissions.py](app/services/permissions.py#L107-L124) 固定 preview→available→processing→{rewrite,end,error}；rewrite 仅回 processing/error；end/error 无出边。状态接口在 [app/api/v1/forms.py](app/api/v1/forms.py#L66-L103) 仅放开 client 的 preview→available、任意设 error；developer 仅 available→processing 绑定接单人，未开放 processing→rewrite/end。
+- 协商：规范要求一主一协；创建 subform 可将 mainform 置 rewrite；需“同意协商”合并（覆盖 mainform，删 subform，状态回 processing）或“取消/失败”（删 subform，通常回 processing 或设 error）；is_changed 仅 subform 可为 1。现状：在 [app/api/v1/forms.py](app/api/v1/forms.py) + [app/repositories/forms.py](app/repositories/forms.py) 仅支持创建 subform（并直接写 mainform.status=rewrite）与删除 subform（强制 mainform.status=processing），无合并/拒绝逻辑、无内容合并/恢复、无 is_changed 约束。
+- 缺口：缺少 processing→rewrite、rewrite→processing/end/error 的角色校验；缺少合并/失败端点及数据操作；缺少 is_changed 限制与合并策略；error 虽终态但缺少“协商失败设 error”的明确入口。
 
 ## 角色、License、Admin
 - 规范：注册需 license_key，激活 license 后写入角色，仅 client/developer 有效；admin 只在模型字段出现，业务未定义（见 Api and database.txt 0.1, models.md 60-75）。
@@ -19,7 +12,7 @@
   - """✅ [auth.py#L28-L35](app/api/v1/auth.py#L28-L35) 注册时验证 license_key 并激活 license，失败则回滚用户创建"""
   - """✅ [auth.py#L56-L61](app/api/v1/auth.py#L56-L61) 登录时验证 license 有效性（validate_active），过期/失效则设置 user.is_active=0 并返回 403"""
   - """✅ [auth.py#L88-L113](app/api/v1/auth.py#L88-L113) POST /auth/reactivate 端点：吊销旧 license，激活新 license_key，更新用户角色"""
-  - """✅ [repositories/licenses.py](app/repositories/licenses.py) 实现 activate、validate_active、activate_new_for_user 完整 license 生命周期管理"""
+  - """✅ [licenses.py](app/repositories/licenses.py) 实现 activate、validate_active、activate_new_for_user 完整 license 生命周期管理"""
 - 现状：权限代码仍保留 admin 兜底分支（如消息/文件/子表单编辑），但实际业务仅依赖 client/developer 角色。
 - 剩余缺口：若严格按规范去除 admin 角色，需清理 [permissions.py](app/services/permissions.py) 中的 admin 判断分支（当前保留作为未来扩展可能）。
 
@@ -59,8 +52,8 @@
 - 邮件：整体未实现事件/超时邮件通知（见下方 Email & Block Reminder Plan）。
 
 ## 文件预览与大文件兜底计划 (NEW)
-- 现状："""✅ GET /file/{id} 已实现流式下载""" ；无列表附件端点，无预览接口，无 >1GB 外链兜底。
-- 理想（未实现）：
+- 现状：上传校验 10MB；GET /file/{id} 仅返回 metadata/storage_path，不流式文件；无列表附件端点，无预览接口，无 >1GB 外链兜底。
+- 理想：
   - GET /file/{id}/preview：若 file_size ≤ 1GB（阈值可配置）直接流式返回并设置 Content-Type；若超阈值返回 JSON 包含 external_url（可用 storage_path 或签名外链）。
   - GET /files?message_id=...：列出某消息附件，含 id/name/size/type/external_url（如有）。
   - 权限沿用现有文件访问规则（发送者/可访问该 block 的用户）。
@@ -70,32 +63,12 @@
   - 文档更新返回格式，前端根据 external_url/流式响应选择展示/下载。
 
 ## Email & Block Reminder Plan (NEW)
-- 新增字段（未实现）：blocks.last_message_at（消息创建时更新，初始可回填 created_at）；blocks.reminder_sent（布尔标记防重复提醒，发送后置 true）。
-- 新增接口/行为（未实现）：
+- 新增字段：blocks.last_message_at（消息创建时更新，初始可回填 created_at）；blocks.reminder_sent（布尔标记防重复提醒，发送后置 true）。
+- 新增接口/行为：
   - Block status 更新端点（normal/urgent 切换）；重置 reminder_sent=false 并可刷新 last_message_at。
   - 消息创建时同时写 block.last_message_at=now、reminder_sent=false。
-- 调度策略（未实现）：后台定时扫描 blocks。
+- 调度策略：后台定时扫描 blocks。
   - urgent：last_message_at 超 5 分钟未更新则发送一次提醒，随后 reminder_sent=true。
   - normal：last_message_at 超 48 小时未更新则发送一次提醒，随后 reminder_sent=true。
-- 邮件发送（未实现）：Resend，env 读取 RESEND_API_KEY，From 使用 bridge-no-reply@icu.584743.xyz，收件人按 form 关联的 client/developer。
+- 邮件发送：Resend，env 读取 RESEND_API_KEY，From 使用 bridge-no-reply@icu.584743.xyz，收件人按 form 关联的 client/developer。
 - 范围：新增内容不改动现有段落，便于团队识别新增计划。
-
----
-
-## 总结
-
-### ✅ 已完成的核心功能
-1. **License 与角色管理**：注册/登录 license 校验、重新激活端点
-2. **状态机完整实现**：所有状态转换（preview→available→processing→{rewrite,end,error}），包含角色权限校验
-3. **协商机制**：创建 subform、合并 subform、协商失败设 error
-4. **消息附件列表**：GET /messages 返回 files 数组
-5. **文件下载**：GET /file/{id} 流式返回 FileResponse
-6. **审计日志**：完整的 audit_logs 基础设施，覆盖所有 CRUD 操作
-
-### ⚠️ 剩余缺口（可选增强）
-1. **Block status 管理**：PUT /block/{id}/status 接口
-2. **邮件提醒调度**：5分钟/48小时无回复提醒
-3. **文件预览**：GET /file/{id}/preview
-4. **大文件兜底**：>1GB 外链方案
-5. **表单详情聚合**：GET /form/{id}/full 一次返回所有子项
-6. **is_changed 强制校验**：API 层校验 subform 专属字段

@@ -42,24 +42,24 @@ SyncBridge is a collaboration platform where:
    * Role access is controlled through the license system
 
 The system includes these primary features:
-      1. Requirement submission (mainform)
+      1. """✅ 已实现""" Requirement submission (mainform)
 
-      2. Subform negotiation for requirement modification
+      2. """✅ 已实现""" Subform negotiation for requirement modification
 
-      3. Functional and non-functional requirement items
+      3. """✅ 已实现""" Functional and non-functional requirement items
 
-      4. Structured message blocks
+      4. """✅ 已实现""" Structured message blocks
 
          * general / function / nonfunction
 
-            5. Real-time messaging and file preview
+            5. """✅ 已实现（消息）""" """⚠️ 文件下载已实现，预览未实现""" Real-time messaging and file preview
 
 Status transitions:
   
 
-               6. Automated email reminders based on block urgency
+               6. """⚠️ 未实现""" Automated email reminders based on block urgency
 
-               7. Role restriction via license (client / developer)
+               7. """✅ 已实现""" Role restriction via license (client / developer)
 The platform consists of:
                   * Frontend: React + Vite, Shadcn UI, TailwindCSS, React Router, Zustand
 

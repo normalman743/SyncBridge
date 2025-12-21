@@ -3,16 +3,16 @@ ________________
 
 
 0. 系统整体介绍（给前后端看的）
-0.1 角色 & License
+0.1 角色 & License """✅ 已实现"""
 * 系统有两类业务角色：
 
    * client：提交需求的用户
 
    * developer：接单并实现需求的开发者
 
-      * 用户注册时必须提供 license_key，license 中写明角色（client 或 developer），激活后才确定用户角色。
+      * """✅ 已实现""" 用户注册时必须提供 license_key，license 中写明角色（client 或 developer），激活后才确定用户角色。
 
-      * 后续所有 API 都依赖角色进行权限控制（RBAC）。
+      * """✅ 已实现""" 后续所有 API 都依赖角色进行权限控制（RBAC）。
 
 0.2 核心数据对象
          * Form（需求表单）
@@ -50,21 +50,21 @@ ________________
                                     * 附在 message 上，大小限制 10MB（由后端做校验）。
 
 0.3 主要业务流程（简要）
-                                       * client 注册 + 激活 license，创建 mainform（状态 preview → available）。
+                                       * """✅ 已实现""" client 注册 + 激活 license，创建 mainform（状态 preview → available）。
 
-                                       * developer 通过 /forms?available_only=true 查看可接单 form，并接单 → form 进入 processing 状态。
+                                       * """✅ 已实现""" developer 通过 /forms?available_only=true 查看可接单 form，并接单 → form 进入 processing 状态。
 
-                                       * 任一方对需求不满意，可以通过创建 subform 进行 rewrite：
+                                       * """✅ 已实现""" 任一方对需求不满意，可以通过创建 subform 进行 rewrite：
 
-                                          * POST /form/{id}/subform 创建协商版本（type=subform）。
+                                          * """✅ 已实现""" POST /form/{id}/subform 创建协商版本（type=subform）。
 
-                                          * 双方通过 subform 的 messages 讨论。
+                                          * """✅ 已实现""" 双方通过 subform 的 messages 讨论。
 
-                                          * 发起方可以删除 subform → 回到原来的 mainform（状态通常回到 processing）。
+                                          * """✅ 已实现""" 发起方可以删除 subform → 回到原来的 mainform（状态通常回到 processing）。
 
-                                          * 双方接受 subform → 合并入 mainform，删除 subform，状态设为 processing。
+                                          * """✅ 已实现""" 双方接受 subform → 合并入 mainform，删除 subform，状态设为 processing（POST /form/{mainform_id}/subform/merge）。
 
-                                          * 若协商失败，可以把 mainform 的 status 设为 error。
+                                          * """✅ 已实现""" 若协商失败，可以把 mainform 的 status 设为 error（DELETE /form/{id}?set_error=true）。
 
 ________________
 
@@ -374,7 +374,7 @@ ________________
 
 
 2.1 Auth
-2.1.1 POST /api/v1/auth/register
+2.1.1 POST /api/v1/auth/register """✅ 已实现"""
                                                 * 前置条件：未登录
 
                                                 * 角色：无差异（所有人都一样）
@@ -407,7 +407,7 @@ Body
 ________________
 
 
-2.1.2 POST /api/v1/auth/login
+2.1.2 POST /api/v1/auth/login """✅ 已实现"""
 Body
 {
   "email": "user@example.com",
@@ -430,7 +430,7 @@ Body
                                                       * 账号或密码错误：UNAUTHORIZED
 
     额外规则
-                                                          * 登录会检查用户绑定的 license 是否 active 且未过期/未撤销，否则返回 FORBIDDEN 并要求重新激活。
+                                                          * """✅ 已实现""" 登录会检查用户绑定的 license 是否 active 且未过期/未撤销，否则返回 FORBIDDEN 并要求重新激活。
 
 ________________
 
@@ -456,7 +456,7 @@ Headers
                                                             * token 无效/过期：UNAUTHORIZED
 
 
-2.1.4 POST /api/v1/auth/reactivate
+2.1.4 POST /api/v1/auth/reactivate """✅ 已实现"""
 Body
 {
   "email": "user@example.com",
@@ -666,7 +666,7 @@ ________________
 ________________
 
 
-2.2.6 POST /api/v1/form/{id}/subform （创建 subform）
+2.2.6 POST /api/v1/form/{id}/subform （创建 subform） """✅ 已实现"""
 前置条件
                                                                                                                               * {id} 必须是 mainform
 
@@ -708,7 +708,32 @@ Body
 ________________
 
 
-2.2.7 PUT /api/v1/form/{id}/status （状态变更）
+"""✅ 已实现""" 2.2.6.5 POST /api/v1/form/{mainform_id}/subform/merge （合并 subform）
+前置条件
+* mainform 必须有 subform_id
+* 当前用户为 client（mainform.user_id）或 developer（mainform.developer_id）
+
+行为
+* 将 subform 的内容（title/message/budget/expected_time）覆盖到 mainform
+* 删除 subform 记录
+* 设置 mainform.subform_id = NULL
+* 设置 mainform.status = 'processing'
+
+成功
+{
+  "status": "success",
+  "message": "Subform merged",
+  "data": null
+}
+
+失败
+* 无 subform：NOT_FOUND
+* 无权限：FORBIDDEN
+
+________________
+
+
+2.2.7 PUT /api/v1/form/{id}/status （状态变更） """✅ 已实现"""
 Body
 {
   "status": "processing"
@@ -718,16 +743,19 @@ Body
 部分状态规则（示例）
                                                                                                                                        * client：
 
-                                                                                                                                          * preview → available
+                                                                                                                                          * """✅ 已实现""" preview → available
 
-                                                                                                                                          * 存在 subform 且协商失败 → 可以设 status='error'
+                                                                                                                                          * """✅ 已实现""" 存在 subform 且协商失败 → 可以设 status='error'
 
                                                                                                                                              * developer：
 
-                                                                                                                                                * a
-vailable → processing（接单）
+                                                                                                                                                * """✅ 已实现""" available → processing（接单）
 
-                                                                                                                                                * processing → rewrite（可配合创建 subform）
+                                                                                                                                                * """✅ 已实现""" processing → rewrite（可配合创建 subform）
+
+                                                                                                                                                * """✅ 已实现""" processing → end
+
+                                                                                                                                                * """✅ 已实现""" 任意阶段根据协商结果设为 error
 
                                                                                                                                                 * processing → end
 
@@ -837,7 +865,7 @@ ________________
 
 
 2.5 Messages
-2.5.1 GET /api/v1/messages
+2.5.1 GET /api/v1/messages """✅ 已实现，包括附件列表"""
 Query
                                                                                                                                                                            * form_id（必填）
 
@@ -911,7 +939,7 @@ ________________
 
 
 2.6 Files
-2.6.1 POST /api/v1/file
+2.6.1 POST /api/v1/file """✅ 已实现，10MB 校验"""
 Request
                                                                                                                                                                                           * multipart/form-data：
 
@@ -935,7 +963,7 @@ Request
 
                                                                                                                                                                                                    * 无权限：FORBIDDEN
 
-2.6.2 GET /api/v1/file/{id}
+2.6.2 GET /api/v1/file/{id} """✅ 已实现 FileResponse 流式下载"""
 返回 metadata + 文件下载（前端可以直接用 URL）。
 2.6.3 DELETE /api/v1/file/{id}
 一般只能由：

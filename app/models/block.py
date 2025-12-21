@@ -6,6 +6,7 @@ class Block(Base):
     __tablename__ = "blocks"
     __table_args__ = (
         Index("ix_blocks_form_id", "form_id"),
+        Index("ix_blocks_reminder_scan", "status", "reminder_sent", "last_message_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
