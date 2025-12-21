@@ -1,6 +1,0 @@
-角色与 License：规范要求注册需 license_key，激活后写角色，角色仅 client/developer（admin 仅在模型字段出现）。代码中注册/登录未实现 license 校验与角色写入；permissions 中还保留 admin 分支（可移除以贴合规范）。
-数据模型：Api and database.txt 与 models.md 基本一致；代码实体同名字段已存在，但 blocks 缺少 status (urgent/normal) 字段及邮件逻辑；licenses 表存在但业务未接入。
-列表/详情输出：列表逻辑与规范一致（字段 id/type/title/status/subform_id/created_at，角色过滤），见 forms.py 与 forms.py。详情仅返回单表字段，未聚合 subform/functions/nonfunctions/blocks，弱于规范期望的“一次返回全部”。
-消息/文件：路径与大小限制符合规范（10MB）；消息权限与块自动创建符合；缺少文件预览、1GB 外链兜底、紧急/普通邮件提醒。
-状态机：如上，未完全覆盖规范示例流转，协商链路缺失。
-Admin 描述出处：仅在模型说明中出现（models.md:60-75 用户字段、消息/文件权限示例处提到 admin），业务流程未定义；如计划移除，应同步清理 permissions 的 admin 逻辑并靠 license 决定角色。
