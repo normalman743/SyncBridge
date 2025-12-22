@@ -1,0 +1,376 @@
+/* src/index.css - 现代化 UI 样式 */
+:root {
+  --primary: #1976d2;
+  --primary-light: #e3f2fd;
+  --danger: #e53935;
+  --bg: #f0f2f5;
+  --card-bg: #fff;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  --radius: 12px;
+  --gap: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: var(--font);
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+}
+
+/* App Layout */
+.app {
+  display: flex;
+  height: 100vh;
+  gap: var(--gap);
+  padding: 20px;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 320px;
+  background: var(--card-bg);
+  padding: 24px;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.sidebar hr {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 16px 0;
+}
+
+/* User Info */
+.user-info {
+  margin-bottom: 24px;
+}
+
+.user-info div {
+  margin-bottom: 4px;
+}
+
+.link {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+
+/* Forms */
+input, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin: 6px 0 12px 0;
+  border-radius: var(--radius);
+  border: 1px solid #d0d0d0;
+  font-size: 14px;
+  transition: 0.2s all;
+  background: #fafafa;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #fff;
+  background-color: var(--primary);
+  transition: 0.2s all;
+}
+
+button:hover {
+  background-color: #1565c0;
+}
+
+button.danger {
+  background-color: var(--danger);
+}
+
+button.danger:hover {
+  background-color: #d32f2f;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.row button {
+  flex: 1;
+}
+
+/* List Items */
+.list {
+  margin-top: 12px;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transition: 0.2s all;
+}
+
+.list-item:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.list-item.active {
+  background-color: #bbdefb;
+  border-color: #64b5f6;
+}
+
+.small {
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Main Area */
+.main {
+  flex: 1;
+  background: var(--card-bg);
+  padding: 28px;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  overflow-y: auto;
+}
+
+/* Meta Info */
+.meta {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+/* Status Controls */
+.status-controls {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.status-controls button {
+  flex: 1;
+}
+
+/* Comments */
+.comments textarea {
+  height: 120px;
+  resize: none;
+}
+
+.note {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #999;
+}
+
+/* Placeholder */
+.placeholder {
+  color: #999;
+  opacity: 0.7;
+  font-style: italic;
+}
+.sidebar h2 {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.user-info {
+  background: #eef6ff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-info div:first-child {
+  font-size: 12px;
+  color: #555;
+}
+
+.user-info div:nth-child(2) {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-info button.link {
+  font-size: 14px;
+  align-self: flex-start;
+  margin-top: 6px;
+}
+.main h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.meta {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.main p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.status-controls button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.status-controls button:hover {
+  background: #155fa0;
+}
+
+.comments {
+  margin-top: 24px;
+}
+
+.comments textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.comments button {
+  margin-top: 8px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.comments button:hover {
+  background: #218838;
+}
+
+.note {
+  font-size: 12px;
+  color: #999;
+  margin-top: 12px;
+}
+.message-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-right: 6px;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message .sender {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #1976d2;
+}
+
+.message.mine {
+  align-self: flex-end;
+  background: #1976d2;
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.message.other {
+  align-self: flex-start;
+  background: #f1f3f5;
+  color: #222;
+  border-bottom-left-radius: 2px;
+}
+
+.comments textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.comments button {
+  margin-top: 8px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.comments button:hover {
+  background: #218838;
+}
+
+.message a {
+  color: #1976d2;
+  text-decoration: underline;
+}
