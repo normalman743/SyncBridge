@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncBridge Demo 首页</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --error: #f87171;
+      --success: #34d399;
+      --border: #1f2937;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.15), transparent 30%),
+                  var(--bg);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: 10px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    nav a:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      border: none;
+      color: #0b1727;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(14, 165, 233, 0.25);
+    }
+    main {
+      flex: 1;
+      padding: 32px 24px 80px;
+      display: flex;
+      justify-content: center;
+    }
+    .page {
+      width: min(1180px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      align-items: center;
+    }
+    .hero-text {
+      padding: 10px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #cdeafe;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .hero h1 {
+      margin: 6px 0 12px;
+      font-size: 28px;
+    }
+    .hero p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+    .chip {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      transition: border-color 0.2s ease, transform 0.1s ease;
+    }
+    .chip:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      transform: translateY(-1px);
+    }
+    footer {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .feature {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .feature h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .feature p, .feature ul {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .feature ul {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+    @media (max-width: 540px) {
+      header {
+        padding: 14px 18px;
+      }
+      .actions {
+        gap: 8px;
+      }
+      .btn {
+        padding: 8px 10px;
+      }
+      .hero {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">SyncBridge Demo</div>
+    <nav>
+      <a href="#top">主页</a>
+      <a href="srs.html">SRS</a>
+      <a href="client.html">Client</a>
+      <a href="developer.html">Developer</a>
+      <a href="tbd.html">Demo</a>
+    </nav>
+    <div class="actions">
+      <button class="btn" onclick="window.location.href='register.html'">注册</button>
+      <button class="btn primary" onclick="window.location.href='login.html'">登录</button>
+    </div>
+  </header>
+
+  <main id="top">
+    <div class="page">
+      <section class="hero">
+        <div class="hero-text">
+          <div class="eyebrow">SyncBridge · v3.3 · Dec 12, 2025</div>
+          <h1>需求沟通与交付闭环</h1>
+          <p>面向 Client / Developer 的需求协同平台：提交、接单、Rewrite 协商、消息与附件、终态确认与审计。当前为静态 Demo，配合最终文档展示。</p>
+          <div class="chips">
+            <a class="chip" href="srs.html">查看 SRS 摘要</a>
+            <a class="chip" href="#highlights">功能亮点</a>
+            <a class="chip" href="client.html">Client 页面</a>
+            <a class="chip" href="developer.html">Developer 页面</a>
+            <a class="chip" href="login.html">登录入口</a>
+          </div>
+          <p>涵盖：需求提交与状态流转、消息与附件（10MB 校验）、紧急/普通提醒、审计与 License 管理。预设账号：client / client123 · dev / dev123；注册 License：Client=AAAAA-BBBBB-CLIEN-TESTD · Developer=AAAAA-BBBBB-DEVEL-TESTD。</p>
+        </div>
+      </section>
+
+      <section id="highlights">
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>用例快览</h3>
+            <ul>
+              <li>UC-1 提交需求（Client）</li>
+              <li>UC-2 状态更新（Developer）</li>
+              <li>UC-3 消息与附件（双方）</li>
+              <li>UC-4 注册/登录</li>
+              <li>UC-5 通知发送（系统）</li>
+            </ul>
+          </div>
+          <div class="feature">
+            <h3>关键功能</h3>
+            <p>需求提交、查看、编辑（Preview/Rewrite）、状态机（Preview→Available→In Progress↔Rewrite；In Progress→End；Rewrite→Error），附件 10MB 限制，外链兜底。</p>
+          </div>
+          <div class="feature">
+            <h3>非功能 & 安全</h3>
+            <p>响应 &lt; 3s，100 并发，年可用性 99.5%，中英双语，基于角色的访问控制，密码不明文存储，完整审计。</p>
+          </div>
+          <div class="feature">
+            <h3>提醒与追踪</h3>
+            <p>紧急通知 5 分钟提醒，普通通知 48 小时提醒；全链路操作日志，支持导出与追溯。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="docs">
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>最终文档</h3>
+            <p style="margin-bottom:8px;">结合 Demo 一起查看：</p>
+            <ul>
+              <li><a href="final%20version/Group6_Requirements_Specification.pdf">Requirements Specification</a></li>
+              <li><a href="final%20version/Group6_System_Design_Document%20.pdf">System Design Document</a></li>
+              <li><a href="final%20version/Group6_Test_Document.pdf">Test Document</a></li>
+              <li><a href="final%20version/Group6_Release_Notes_User_Manual.pdf">Release Notes & User Manual</a></li>
+            </ul>
+          </div>
+          <div class="feature">
+            <h3>演示入口</h3>
+            <p>Client 页模拟需求提交、Rewrite、讨论区；Developer 页展示接单、确认与讨论优先体验。</p>
+            <p style="margin-top:6px;">登录页：client / client123 · dev / dev123；或先使用 License 注册，再登录体验。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    静态演示页，无任何真实后端调用
+  </footer>
+</body>
+</html>

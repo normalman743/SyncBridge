@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RBD 占位页</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .panel {
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 28px;
+      background: rgba(255, 255, 255, 0.03);
+      max-width: 480px;
+      width: min(480px, 92vw);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+    h1 { margin: 0 0 12px; }
+    p { margin: 0 0 14px; color: #cbd5e1; }
+    .user { font-weight: 600; color: #38bdf8; }
+    a { color: #38bdf8; text-decoration: none; font-weight: 600; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>RBD 页面占位</h1>
+    <p id="welcome"></p>
+    <p>这是预设账号（D-client / D-developer）注册后的跳转页面，占位用于后续完善。</p>
+    <p><a href="index.html">返回主页</a> · <a href="login.html">登录</a></p>
+  </div>
+
+  <script>
+    const user = sessionStorage.getItem("demoUser");
+    const role = sessionStorage.getItem("demoRole");
+    const welcome = document.getElementById("welcome");
+    const roleText = role ? `（${role}）` : "";
+    welcome.textContent = user ? `当前登录：${user}${roleText}` : "尚未检测到登录用户";
+  </script>
+</body>
+</html>

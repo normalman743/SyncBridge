@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncBridge SRS v3.3</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.12), transparent 28%),
+                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.16), transparent 32%),
+                  var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: 10px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      border: none;
+      color: #0b1727;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(14, 165, 233, 0.25);
+    }
+    main {
+      flex: 1;
+      padding: 32px 22px 70px;
+      display: flex;
+      justify-content: center;
+    }
+    .page {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .hero {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 24px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.015));
+      backdrop-filter: blur(8px);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4);
+    }
+    .hero h1 {
+      margin: 6px 0 6px;
+      font-size: 26px;
+    }
+    .muted {
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 6px 0 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .pill {
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    h3 { margin: 0 0 4px; font-size: 16px; }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    p { margin: 0; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .toc a {
+      text-decoration: none;
+      color: var(--text);
+      border: 1px dashed rgba(56, 189, 248, 0.4);
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.08);
+      font-size: 13px;
+    }
+    footer {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 540px) {
+      header { padding: 14px 18px; }
+      .hero { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">SyncBridge SRS</div>
+    <nav>
+      <a href="index.html">主页</a>
+      <a href="tbd.html">Demo</a>
+    </nav>
+    <div class="actions">
+      <button class="btn" onclick="window.location.href='index.html'">返回登录</button>
+      <button class="btn primary" onclick="window.location.href='tbd.html'">进入 Demo</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="page">
+      <section class="hero" id="top">
+        <h1>Software Requirements Specification</h1>
+        <p class="muted">SyncBridge · Version 3.3 · Dec 12, 2025</p>
+        <p class="muted">需求协作与沟通平台的规范性说明，覆盖功能、非功能、架构、角色与用例。</p>
+        <div class="meta">
+          <span class="pill">Authors: CHEN Tianyu, GUO Mingkang, HUA Zifan, Li Molin, Qi Zihan</span>
+          <span class="pill">Course: CSCI 3100 Software Engineering</span>
+          <span class="pill">提交: 学术课程项目</span>
+        </div>
+        <div class="toc">
+          <a href="#intro">1. Introduction</a>
+          <a href="#overall">2. Overall Description</a>
+          <a href="#usecases">Use Cases</a>
+          <a href="#fr">Functional Requirements</a>
+          <a href="#nfr">Non-Functional</a>
+          <a href="#glossary">Glossary/Status</a>
+        </div>
+      </section>
+
+      <section id="intro">
+        <h2>1. Introduction</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Purpose & Scope</h3>
+            <p>SRS 用于定义 SyncBridge 的目标、功能、性能与约束，指导开发、测试与后续维护。平台聚焦客户端与开发者的需求澄清全流程。</p>
+          </div>
+          <div class="card">
+            <h3>Conventions & References</h3>
+            <p>Times New Roman 11pt、分级标题；优先级 High/Medium/Low。参考 IEEE 830-1998、课程模板、团队讨论。</p>
+          </div>
+          <div class="card">
+            <h3>结构</h3>
+            <p>第 2 章总体描述，第 3 章功能与非功能需求，附录含术语、状态定义与 TBD 清单。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="overall">
+        <h2>2. Overall Description</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>架构</h3>
+            <p>Web 客户端 + 后端服务 + 数据库；外部邮件服务；未来可集成外部 AI（当前不在范围）。</p>
+          </div>
+          <div class="card">
+            <h3>系统环境与角色</h3>
+            <p>角色：Client（提交/澄清需求）、Developer（分析/执行需求）；通过浏览器访问，后台调用邮件服务。</p>
+          </div>
+          <div class="card">
+            <h3>用户特征</h3>
+            <p>Client：非技术、关注业务价值；Developer：技术背景，评估可行性并提出澄清问题。</p>
+          </div>
+          <div class="card">
+            <h3>假设/依赖</h3>
+            <p>稳定数据库、SMTP、文件存储、第三方 API；稳定基础设施与运维支持；用户具备基础系统素养。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="usecases">
+        <h2>2.3 Use Cases</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>UC-1 提交需求 (Client)</h3>
+            <p>填写表单 → 校验 → 创建需求（初始状态 Preview）→ 分配 ID → 确认；异常时提示错误。</p>
+          </div>
+          <div class="card">
+            <h3>UC-2 更新状态 (Developer)</h3>
+            <p>查看详情 → 选择新状态 → 校验工作流 → 更新并记录历史；无权限或非法流转则拒绝。</p>
+          </div>
+          <div class="card">
+            <h3>UC-3 发送消息 (双方)</h3>
+            <p>打开需求 → 输入消息/附件 → 校验与存储 → 展示于历史；附件超限则提示。</p>
+          </div>
+          <div class="card">
+            <h3>UC-4 注册/登录</h3>
+            <p>注册创建账号（唯一标识）或登录验证凭证；失败时返回错误。</p>
+          </div>
+          <div class="card">
+            <h3>UC-5 通知发送 (系统)</h3>
+            <p>事件触发 → 找到收件人 → 按规则发送通知；失败记录以便排障。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="fr">
+        <h2>3.1 Functional Requirements</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>认证 (FR-1~4)</h3>
+            <ul>
+              <li>注册/登录，支持退出与找回密码。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>需求提交/管理 (FR-5~8)</h3>
+            <ul>
+              <li>提交、查看、编辑（受状态限制）。</li>
+              <li>详情包含描述、状态与讨论。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>沟通与附件 (FR-9~13)</h3>
+            <ul>
+              <li>消息发布与历史展示。</li>
+              <li>附件 10MB 限制，超限提示使用外链。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>状态机 (FR-14~19)</h3>
+            <ul>
+              <li>状态：Preview/Available/In Progress/Rewrite/End/Error。</li>
+              <li>合法流转：Preview→Available→In Progress→Rewrite↔In Progress→End/Error；Error/End 终止。</li>
+              <li>互相确认后方可 End；记录状态历史。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>通知 (FR-20~23)</h3>
+            <p>关键事件发送通知；紧急 5 分钟提醒，普通 48 小时提醒；可配置基础偏好。</p>
+          </div>
+          <div class="card">
+            <h3>审计 (FR-24~26)</h3>
+            <p>记录提交、编辑、状态与消息操作；授权用户可查看，支持导出。</p>
+          </div>
+          <div class="card">
+            <h3>License (FR-27~31)</h3>
+            <p>输入并验证 License；无有效 License 限制核心功能；反馈失效原因；记录 License 事件。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="nfr">
+        <h2>3.2 Non-Functional</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>性能与可靠性</h3>
+            <p>响应 &lt; 3 秒，支持 100 并发；年可用性 99.5%；异常不损坏数据并记录错误。</p>
+          </div>
+          <div class="card">
+            <h3>可用性与安全</h3>
+            <p>关键操作不超过三步；中英双语；基于角色的访问控制；密码不明文存储。</p>
+          </div>
+          <div class="card">
+            <h3>可维护/可扩展/可移植</h3>
+            <p>易扩展，无需大改即可新增功能；有充分文档；可随用户与需求量增长扩展；常见浏览器和标准服务环境可用。</p>
+          </div>
+          <div class="card">
+            <h3>可审计性</h3>
+            <p>全链路可追踪；审计记录包含动作、时间戳、操作者。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="glossary">
+        <h2>Glossary & Status</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>关键术语</h3>
+            <p>Requirement、Requirement ID、Message、File Upload、Email Notification、Audit Log、Traceability、Session、Authorization、High Concurrency、Accessibility、External Dependency。</p>
+          </div>
+          <div class="card">
+            <h3>状态定义</h3>
+            <ul>
+              <li>Preview: 草稿，可编辑，未对开发者公开。</li>
+              <li>Available: 发布，可被认领。</li>
+              <li>In Progress: 已被单一开发者认领，处理中。</li>
+              <li>Rewrite: 协商/修订阶段，可返回 In Progress。</li>
+              <li>End: 双方确认完成，终止。</li>
+              <li>Error: 无法解决的情况，终止。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>TBD 列表（摘录）</h3>
+            <p>设计文档颗粒度（是否需 UML）、关键组件清单、测试策略（TDD 或传统流程）、版本控制标记标准等。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    静态 SRS 摘要（前端展示，无真实后端调用）
+  </footer>
+</body>
+</html>

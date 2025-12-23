@@ -1,0 +1,2146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard - SyncBridge Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #0b1221;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --error: #f87171;
+      --card: rgba(255, 255, 255, 0.02);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.15), transparent 30%),
+                  var(--bg);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+    }
+    .brand { font-weight: 700; letter-spacing: 0.5px; }
+    nav { display: flex; align-items: center; gap: 12px; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: 10px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+    .user-chip {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 13px;
+    }
+    main {
+      flex: 1;
+      padding: 18px 22px 40px;
+      display: flex;
+      justify-content: center;
+    }
+    .layout {
+      width: min(1240px, 100%);
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .req-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.1s ease;
+    }
+    .req-item:hover { border-color: rgba(56, 189, 248, 0.4); transform: translateY(-1px); }
+    .req-item.active { border-color: rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.06); }
+    .req-title { margin: 0 0 6px; font-weight: 600; }
+    .req-meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: #0b1727;
+      font-weight: 600;
+    }
+    .s-preview { background: #cbd5e1; }
+    .s-available { background: #67e8f9; }
+    .s-inprogress { background: #38bdf8; }
+    .s-rewrite { background: #fbbf24; }
+    .s-end { background: #34d399; }
+    .s-error { background: #f87171; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .section {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .section h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .inline-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      align-items: end;
+    }
+    .inline-grid .btn {
+      width: 100%;
+    }
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .item-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .item-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .item-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .btn.ghost {
+      background: transparent;
+      border: 1px dashed rgba(248, 113, 113, 0.6);
+      color: #fecaca;
+    }
+    label { font-size: 13px; color: #cbd5e1; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1221;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+    }
+    textarea { resize: vertical; min-height: 90px; }
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-strong)); border: none; color: #0b1727; font-weight: 600; box-shadow: 0 12px 30px rgba(14, 165, 233, 0.25); }
+    .btn.warn { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; color: #0b1727; font-weight: 600; box-shadow: 0 12px 30px rgba(245, 158, 11, 0.25); }
+    .btn.danger { background: linear-gradient(135deg, #f87171, #ef4444); border: none; color: #0b1727; font-weight: 600; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.25); }
+    .btn.small { padding: 6px 10px; font-size: 12px; }
+    .detail {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .detail-title { margin: 0; font-size: 20px; }
+    .stack { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .messages { display: flex; flex-direction: column; gap: 12px; }
+    .msg {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .msg-head { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .msg-body { margin-top: 6px; font-size: 14px; line-height: 1.5; }
+    .attachments { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .tag {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #cdeafe;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      font-size: 12px;
+    }
+    .fn-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .fn-title { margin: 0 0 6px; font-weight: 600; }
+    .fn-desc { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+    .fn-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
+    .fn-changed { color: var(--warn); font-weight: 700; }
+    .callout {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed rgba(56, 189, 248, 0.5);
+      background: rgba(56, 189, 248, 0.08);
+      color: #cdeafe;
+      font-size: 13px;
+    }
+    .tabs {
+      display: inline-flex;
+      gap: 8px;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .tab {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tab.active {
+      color: var(--text);
+      border-color: rgba(56, 189, 248, 0.6);
+      background: rgba(56, 189, 248, 0.12);
+    }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f87171;
+      margin-left: 6px;
+    }
+    .subform-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .subform-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: #e0f2fe;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">SyncBridge Client</div>
+    <nav>
+      <a href="index.html">主页</a>
+      <a href="srs.html">SRS</a>
+      <a href="login.html">登录</a>
+      <a href="register.html">注册</a>
+    </nav>
+    <div class="user-chip" id="userChip"></div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <h2 style="margin:0;">Projects</h2>
+            <p style="margin:2px 0 0;color:var(--muted);font-size:13px;">左侧选择，右侧查看/编辑</p>
+          </div>
+          <button class="btn primary" id="newProjectBtn">New Project</button>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="list" id="reqList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="detail" id="detail">
+          <p style="color:var(--muted);margin:0;">请选择左侧需求查看详情</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <footer>静态演示，无真实后端调用</footer>
+
+  <script>
+    const ATTACH_LIMIT = "10MB";
+    const FILE_LIMIT = 10 * 1024 * 1024; // 10MB
+    const userName = sessionStorage.getItem("demoUser") || "client-demo";
+    const role = "client";
+    sessionStorage.setItem("demoRole", role);
+    document.getElementById("userChip").textContent = `${userName} · ${role}`;
+
+    const statuses = [
+      { key: "Preview", cls: "s-preview" },
+      { key: "Available", cls: "s-available" },
+      { key: "In Progress", cls: "s-inprogress" },
+      { key: "Rewrite", cls: "s-rewrite" },
+      { key: "End", cls: "s-end" },
+      { key: "Error", cls: "s-error" }
+    ];
+
+    const state = {
+      requirements: [
+        {
+          id: 101,
+          title: "导出报表支持 CSV",
+          status: "Available",
+          updatedAt: "2025-12-12 14:20",
+          owner: "D-developer",
+          budget: "HKD 18,000",
+          expectedTime: "2 周",
+          tags: ["export", "report", "csv"],
+          desc: "支持对需求列表导出 CSV，过滤条件可复用当前筛选。"
+        },
+        {
+          id: 102,
+          title: "需求讨论区支持附件",
+          status: "In Progress",
+          updatedAt: "2025-12-11 10:05",
+          owner: "D-developer",
+          budget: "HKD 12,000",
+          expectedTime: "1.5 周",
+          tags: ["message", "file"],
+          desc: "评论区需允许上传 10MB 文件，超限提示使用外链 如github drive。。"
+        },
+        {
+          id: 103,
+          title: "增加状态历史视图",
+          status: "Rewrite",
+          updatedAt: "2025-12-10 09:12",
+          owner: "client-demo",
+          budget: "HKD 9,000",
+          expectedTime: "1 周",
+          tags: ["status", "timeline"],
+          desc: "在详情页展示状态流转记录，便于追踪责任人和时间。"
+        },
+        {
+          id: 104,
+          title: "预览中的新需求",
+          status: "Preview",
+          updatedAt: "2025-12-13 10:00",
+          owner: "client-demo",
+          budget: "HKD 5,000",
+          expectedTime: "1 周",
+          tags: ["preview"],
+          desc: "示例 Preview 状态，等待发布为 Available。"
+        },
+        {
+          id: 105,
+          title: "已完成的需求示例",
+          status: "End",
+          updatedAt: "2025-12-11 18:30",
+          owner: "D-developer",
+          budget: "HKD 6,500",
+          expectedTime: "1 周",
+          tags: ["completed"],
+          desc: "示例 End 状态，双方已确认完成。"
+        },
+        {
+          id: 106,
+          title: "错误终止的需求示例",
+          status: "Error",
+          updatedAt: "2025-12-12 20:15",
+          owner: "client-demo",
+          budget: "HKD 4,000",
+          expectedTime: "1 周",
+          tags: ["blocked", "error"],
+          desc: "示例 Error 状态，协商失败后终止。"
+        }
+      ],
+      functions: {
+        101: [
+          { name: "CSV 导出", level: "commercial", desc: "导出当前筛选结果", is_changed: false },
+          { name: "字段筛选保持", level: "commercial", desc: "跟随筛选器输出字段", is_changed: false }
+        ],
+        102: [
+          { name: "消息附件上传", level: "commercial", desc: "限制 10MB，支持多附件", is_changed: false },
+          { name: "外链提示", level: "lightweight", desc: "超限时推荐使用外链", is_changed: false }
+        ],
+        103: [
+          { name: "状态时间线", level: "commercial", desc: "显示流转与操作者", is_changed: true }
+        ],
+        104: [
+          { name: "需求草稿保存", level: "lightweight", desc: "可重复编辑", is_changed: false }
+        ],
+        105: [
+          { name: "交付验收", level: "commercial", desc: "双方确认终态", is_changed: false }
+        ],
+        106: [
+          { name: "问题记录", level: "lightweight", desc: "记录终止原因", is_changed: false }
+        ]
+      },
+      nonfunctions: {
+        101: [
+          { name: "安全性", level: "commercial", status: "init", weight: 7, is_changed: false },
+          { name: "性能（并发100）", level: "commercial", status: "developing", weight: 9, is_changed: false }
+        ],
+        102: [
+          { name: "可用性（3步完成上传）", level: "lightweight", status: "developing", weight: 6, is_changed: false }
+        ],
+        103: [
+          { name: "可追踪性（全链路日志）", level: "commercial", status: "init", weight: 8, is_changed: true }
+        ],
+        104: [
+          { name: "可编辑性", level: "lightweight", status: "init", weight: 5, is_changed: false }
+        ],
+        105: [
+          { name: "稳定性", level: "commercial", status: "finish", weight: 8, is_changed: false }
+        ],
+        106: [
+          { name: "合规性", level: "commercial", status: "error", weight: 6, is_changed: false }
+        ]
+      },
+      messages: {
+        101: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-12 09:10", text: "希望导出字段包含当前筛选条件", attachments: [] },
+            { author: "D-developer", role: "dev", time: "2025-12-12 14:20", text: "可以，本周内完成", attachments: ["spec-v1.pdf"] },
+            { author: "client-demo", role: "client", time: "2025-12-13 10:00", text: "再补充一个字段映射的例子", attachments: ["mapping.xlsx"] }
+          ],
+          function: [
+            { author: "client-demo", role: "client", time: "2025-12-12 09:20", text: "CSV 导出最好支持 UTF-8 BOM", attachments: [], target: "CSV 导出" },
+            { author: "D-developer", role: "dev", time: "2025-12-13 11:25", text: "BOM 已加，字段顺序按 UI 排序", attachments: ["export-demo.csv"], target: "CSV 导出" }
+          ],
+          nonfunction: [
+            { author: "D-developer", role: "dev", time: "2025-12-13 12:30", text: "性能压测 100 并发 ok", attachments: ["load-report.pdf"], target: "性能（并发100）" }
+          ]
+        },
+        102: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-10 12:00", text: "附件大小限制 10MB，超限要有提示", attachments: [] },
+            { author: "D-developer", role: "dev", time: "2025-12-11 10:05", text: "已按 10MB 限制处理，今晚推送前端校验", attachments: [] }
+          ],
+          function: [
+            { author: "D-developer", role: "dev", time: "2025-12-11 10:08", text: "上传逻辑已拆分为通用组件", attachments: [], target: "消息附件上传" },
+            { author: "client-demo", role: "client", time: "2025-12-12 15:30", text: "外链提示要明显一点", attachments: [], target: "外链提示" }
+          ],
+          nonfunction: [
+            { author: "client-demo", role: "client", time: "2025-12-12 16:00", text: "可用性希望 3 步内完成上传", attachments: ["ux-flow.png"], target: "可用性（3步完成上传）" }
+          ]
+        },
+        103: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-09 16:02", text: "需要一个状态历史时间线", attachments: [] }
+          ],
+          function: [
+            { author: "D-developer", role: "dev", time: "2025-12-11 09:50", text: "时间线准备加上过滤器", attachments: ["timeline-mock.png"], target: "状态时间线" }
+          ],
+          nonfunction: [
+            { author: "client-demo", role: "client", time: "2025-12-09 16:10", text: "日志粒度要能追踪操作者", attachments: [], target: "可追踪性（全链路日志）" }
+          ]
+        },
+        104: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-13 10:05", text: "草稿阶段，待补充预算细节", attachments: [] }
+          ],
+          function: [],
+          nonfunction: []
+        },
+        105: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-11 18:00", text: "已按验收标准完成", attachments: ["acceptance.pdf"] },
+            { author: "D-developer", role: "dev", time: "2025-12-11 18:30", text: "确认交付完成", attachments: [] }
+          ],
+          function: [],
+          nonfunction: []
+        },
+        106: {
+          general: [
+            { author: "client-demo", role: "client", time: "2025-12-12 19:50", text: "需求暂停，准备走法律途径", attachments: [] }
+          ],
+          function: [],
+          nonfunction: []
+        }
+      },
+      subforms: {
+        103: {
+          previousStatus: "In Progress",
+          title: "增加状态历史视图（含时间线）",
+          budget: "HKD 10,000",
+          expectedTime: "1.5 周",
+          tags: ["status", "timeline", "audit"],
+          desc: "补充时间线组件，展示操作者与备注。",
+          functions: [
+            { name: "状态时间线", level: "commercial", desc: "增加时间线与筛选" }
+          ],
+          nonfunctions: [
+            { name: "可追踪性（全链路日志）", level: "commercial", status: "init", weight: 8 }
+          ]
+        }
+      },
+      completions: {
+        102: { client: false, dev: false },
+        105: { client: true, dev: true }
+      },
+      histories: {
+        101: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-10 09:00", note: "创建表单" },
+          { from: "Preview", to: "Available", actor: "client-demo", time: "2025-12-10 09:15", note: "发布需求" }
+        ],
+        102: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-09 10:30", note: "创建表单" },
+          { from: "Preview", to: "Available", actor: "client-demo", time: "2025-12-09 10:45", note: "发布需求" },
+          { from: "Available", to: "In Progress", actor: "D-developer", time: "2025-12-10 08:00", note: "开发者接单" }
+        ],
+        103: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-08 15:10", note: "创建表单" },
+          { from: "Preview", to: "Available", actor: "client-demo", time: "2025-12-08 15:30", note: "发布需求" },
+          { from: "Available", to: "In Progress", actor: "D-developer", time: "2025-12-09 09:00", note: "开发者接单" },
+          { from: "In Progress", to: "Rewrite", actor: "client-demo", time: "2025-12-10 09:12", note: "提出改写" }
+        ],
+        104: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-13 10:00", note: "创建草稿" }
+        ],
+        105: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-09 10:00", note: "创建表单" },
+          { from: "Preview", to: "Available", actor: "client-demo", time: "2025-12-09 10:20", note: "发布需求" },
+          { from: "Available", to: "In Progress", actor: "D-developer", time: "2025-12-09 11:00", note: "开发者接单" },
+          { from: "In Progress", to: "End", actor: "D-developer", time: "2025-12-11 18:30", note: "双方确认完成" }
+        ],
+        106: [
+          { from: null, to: "Preview", actor: "client-demo", time: "2025-12-10 14:00", note: "创建表单" },
+          { from: "Preview", to: "Available", actor: "client-demo", time: "2025-12-10 14:20", note: "发布需求" },
+          { from: "Available", to: "In Progress", actor: "D-developer", time: "2025-12-11 09:00", note: "开发者接单" },
+          { from: "In Progress", to: "Rewrite", actor: "client-demo", time: "2025-12-12 18:00", note: "提出改写" },
+          { from: "Rewrite", to: "Error", actor: "client-demo", time: "2025-12-12 20:15", note: "协商失败" }
+        ]
+      },
+      selectedId: null
+    };
+
+    const reqListEl = document.getElementById("reqList");
+    const detailEl = document.getElementById("detail");
+    const toastEl = document.getElementById("toast");
+    const createState = { functions: [], nonfunctions: [] };
+    const editState = { reqId: null, functions: [], nonfunctions: [] };
+    const uiState = { block: "general", target: "", view: "detail", lastReq: null, statusCache: {}, pendingFiles: {} };
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      setTimeout(() => toastEl.classList.remove("show"), 1600);
+    }
+
+    function renderCreateLists() {
+      const fnListEl = document.getElementById("fn-list");
+      const nfrListEl = document.getElementById("nfr-list");
+      if (!fnListEl || !nfrListEl) return;
+
+      fnListEl.innerHTML = createState.functions.length
+        ? createState.functions.map((f, index) => `
+            <div class="item-row">
+              <div>
+                <div class="item-title">${f.name}</div>
+                <div class="item-meta">
+                  <span>等级: ${f.level}</span>
+                  ${f.desc ? `<span>描述: ${f.desc}</span>` : ""}
+                </div>
+              </div>
+              <button class="btn ghost small" type="button" data-remove-fn="${index}">移除</button>
+            </div>
+          `).join("")
+        : `<p style="color:var(--muted);margin:0;font-size:12px;">尚未添加功能需求</p>`;
+
+      nfrListEl.innerHTML = createState.nonfunctions.length
+        ? createState.nonfunctions.map((n, index) => `
+            <div class="item-row">
+              <div>
+                <div class="item-title">${n.name}</div>
+                <div class="item-meta">
+                  <span>等级: ${n.level}</span>
+                  <span>权重: ${n.weight}</span>
+                  <span>状态: ${n.status}</span>
+                </div>
+              </div>
+              <button class="btn ghost small" type="button" data-remove-nfr="${index}">移除</button>
+            </div>
+          `).join("")
+        : `<p style="color:var(--muted);margin:0;font-size:12px;">尚未添加非功能需求</p>`;
+    }
+
+    function statusPill(status) {
+      const lower = status.toLowerCase().replace(" ", "");
+      const cls = {
+        preview: "s-preview",
+        available: "s-available",
+        inprogress: "s-inprogress",
+        rewrite: "s-rewrite",
+        end: "s-end",
+        error: "s-error"
+      }[lower] || "s-preview";
+      return `<span class="status-pill ${cls}">${status}</span>`;
+    }
+
+    function isFnChanged(sub, main) {
+      if (!main) return true;
+      return sub.name !== main.name
+        || sub.level !== main.level
+        || (sub.desc || "") !== (main.desc || "");
+    }
+
+    function isNfrChanged(sub, main) {
+      if (!main) return true;
+      return sub.name !== main.name
+        || sub.level !== main.level
+        || sub.status !== main.status
+        || Number(sub.weight || 0) !== Number(main.weight || 0);
+    }
+
+    function renderLegend() {
+      const el = document.getElementById("legend");
+      el.innerHTML = statuses.map(s => `<span class="status-pill ${s.cls}">${s.key}</span>`).join("");
+    }
+
+    function getDefaultView(status) {
+      return status === "In Progress" || status === "End" ? "chat" : "detail";
+    }
+
+    function renderList() {
+      reqListEl.innerHTML = state.requirements
+        .sort((a, b) => b.id - a.id)
+        .map(req => {
+          const fnCount = (state.functions[req.id] || []).length;
+          const nfrCount = (state.nonfunctions[req.id] || []).length;
+          return `
+            <div class="req-item ${state.selectedId === req.id ? "active" : ""}" data-id="${req.id}">
+              <div class="req-title">${req.title}</div>
+              <div class="req-meta">
+                ${statusPill(req.status)}
+                <span>#${req.id}</span>
+                <span>功能 ${fnCount} · 非功能 ${nfrCount}</span>
+                <span>更新: ${req.updatedAt}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+    }
+
+    function renderNewProject() {
+      detailEl.innerHTML = `
+        <h3 style="margin:0 0 8px;">新建需求（Preview）</h3>
+        <div class="form" id="createForm">
+          <div class="section">
+            <h4>基本信息</h4>
+            <div class="inline-grid">
+              <div>
+                <label for="new-title">标题</label>
+                <input id="new-title" placeholder="如：添加导出报表功能" />
+              </div>
+              <div>
+                <label for="new-budget">预算</label>
+                <input id="new-budget" placeholder="如：HKD 18,000" />
+              </div>
+              <div>
+                <label for="new-time">预计交付</label>
+                <input id="new-time" placeholder="如：2-3 周" />
+              </div>
+            </div>
+            <div>
+              <label for="new-tags">标签（逗号分隔）</label>
+              <input id="new-tags" placeholder="export, report, csv" />
+            </div>
+            <div>
+              <label for="new-desc">需求描述</label>
+              <textarea id="new-desc" placeholder="简述业务背景与期望"></textarea>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>功能需求（Functions）</h4>
+            <div class="inline-grid">
+              <div>
+                <label for="fn-name">名称</label>
+                <input id="fn-name" placeholder="如：CSV 导出" />
+              </div>
+              <div>
+                <label for="fn-level">等级</label>
+                <select id="fn-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="fn-desc">描述</label>
+                <input id="fn-desc" placeholder="如：支持筛选条件输出" />
+              </div>
+              <button class="btn primary" type="button" id="add-fn">添加功能</button>
+            </div>
+            <div class="item-list" id="fn-list"></div>
+          </div>
+
+          <div class="section">
+            <h4>非功能需求（Non-Functions）</h4>
+            <div class="inline-grid">
+              <div>
+                <label for="nfr-name">名称</label>
+                <input id="nfr-name" placeholder="如：可用性（3步完成上传）" />
+              </div>
+              <div>
+                <label for="nfr-level">等级</label>
+                <select id="nfr-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="nfr-weight">权重 (1-10)</label>
+                <input id="nfr-weight" type="number" min="1" max="10" value="5" />
+              </div>
+              <div>
+                <label for="nfr-status">状态</label>
+                <select id="nfr-status">
+                  <option value="init" selected>init</option>
+                  <option value="developing">developing</option>
+                  <option value="finish">finish</option>
+                  <option value="error">error</option>
+                </select>
+              </div>
+              <button class="btn primary" type="button" id="add-nfr">添加非功能</button>
+            </div>
+            <div class="item-list" id="nfr-list"></div>
+          </div>
+
+          <button class="btn primary" id="createBtn">提交预览表单</button>
+        </div>
+      `;
+
+      renderCreateLists();
+
+      const addFnBtn = document.getElementById("add-fn");
+      const addNfrBtn = document.getElementById("add-nfr");
+      const createBtn = document.getElementById("createBtn");
+      const fnListEl = document.getElementById("fn-list");
+      const nfrListEl = document.getElementById("nfr-list");
+
+      addFnBtn.addEventListener("click", () => {
+        const nameEl = document.getElementById("fn-name");
+        const levelEl = document.getElementById("fn-level");
+        const descEl = document.getElementById("fn-desc");
+        const name = (nameEl.value || "").trim();
+        const desc = (descEl.value || "").trim();
+        if (!name) {
+          showToast("请输入功能名称");
+          return;
+        }
+        createState.functions.push({
+          name,
+          level: levelEl.value,
+          desc,
+          is_changed: false
+        });
+        nameEl.value = "";
+        descEl.value = "";
+        levelEl.value = "commercial";
+        renderCreateLists();
+      });
+
+      addNfrBtn.addEventListener("click", () => {
+        const nameEl = document.getElementById("nfr-name");
+        const levelEl = document.getElementById("nfr-level");
+        const weightEl = document.getElementById("nfr-weight");
+        const statusEl = document.getElementById("nfr-status");
+        const name = (nameEl.value || "").trim();
+        const weight = Number(weightEl.value || 0);
+        if (!name) {
+          showToast("请输入非功能名称");
+          return;
+        }
+        if (!Number.isFinite(weight) || weight < 1 || weight > 10) {
+          showToast("权重需要在 1-10 之间");
+          return;
+        }
+        createState.nonfunctions.push({
+          name,
+          level: levelEl.value,
+          weight,
+          status: statusEl.value,
+          is_changed: false
+        });
+        nameEl.value = "";
+        weightEl.value = "5";
+        levelEl.value = "commercial";
+        statusEl.value = "init";
+        renderCreateLists();
+      });
+
+      fnListEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-fn]");
+        if (!btn) return;
+        const index = Number(btn.dataset.removeFn);
+        if (Number.isInteger(index)) {
+          createState.functions.splice(index, 1);
+          renderCreateLists();
+        }
+      });
+
+      nfrListEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-nfr]");
+        if (!btn) return;
+        const index = Number(btn.dataset.removeNfr);
+        if (Number.isInteger(index)) {
+          createState.nonfunctions.splice(index, 1);
+          renderCreateLists();
+        }
+      });
+
+      createBtn.addEventListener("click", () => {
+        const titleEl = document.getElementById("new-title");
+        const descEl = document.getElementById("new-desc");
+        const budgetEl = document.getElementById("new-budget");
+        const timeEl = document.getElementById("new-time");
+        const tagsEl = document.getElementById("new-tags");
+        const title = (titleEl.value || "").trim();
+        const desc = (descEl.value || "").trim();
+        const budget = (budgetEl.value || "").trim();
+        const expectedTime = (timeEl.value || "").trim();
+        const tags = (tagsEl.value || "")
+          .split(",")
+          .map(t => t.trim())
+          .filter(Boolean);
+        if (!title) {
+          showToast("请输入标题");
+          return;
+        }
+        if (!createState.functions.length && !createState.nonfunctions.length) {
+          showToast("请至少添加一个功能或非功能需求");
+          return;
+        }
+        const nextId = (state.requirements.length ? Math.max(...state.requirements.map(r => r.id)) : 100) + 1;
+        const now = new Date().toISOString().replace("T", " ").substring(0, 16);
+        state.requirements.push({
+          id: nextId,
+          title,
+          status: "Preview",
+          updatedAt: now,
+          owner: userName,
+          budget,
+          expectedTime,
+          tags,
+          desc
+        });
+        state.functions[nextId] = createState.functions.map(f => ({ ...f, is_changed: false }));
+        state.nonfunctions[nextId] = createState.nonfunctions.map(n => ({ ...n, is_changed: false }));
+        state.histories[nextId] = [
+          { from: null, to: "Preview", actor: userName, time: now, note: "创建表单" }
+        ];
+        state.messages[nextId] = {
+          general: [{ author: userName, role, time: now, text: desc || "新需求创建", attachments: [] }],
+          function: [],
+          nonfunction: []
+        };
+        createState.functions = [];
+        createState.nonfunctions = [];
+        editState.reqId = null;
+        editState.functions = [];
+        editState.nonfunctions = [];
+        uiState.view = getDefaultView("Preview");
+        uiState.lastReq = nextId;
+        state.selectedId = nextId;
+        uiState.block = "general";
+        uiState.target = "";
+        renderList();
+        renderDetail();
+        showToast("新需求已创建（Preview）");
+      });
+    }
+    function addHistoryEntry(reqId, fromStatus, toStatus, note) {
+      const now = new Date().toISOString().replace("T", " ").substring(0, 16);
+      state.histories[reqId] = state.histories[reqId] || [];
+      state.histories[reqId].push({
+        from: fromStatus,
+        to: toStatus,
+        actor: userName,
+        time: now,
+        note: note || ""
+      });
+      return now;
+    }
+
+    function publishRequirement(req) {
+      if (req.status !== "Preview") {
+        showToast("当前状态无法发布");
+        return;
+      }
+      if (!confirm("确认发布为 Available，等待开发者接单？")) return;
+      const now = addHistoryEntry(req.id, req.status, "Available", "发布需求");
+      req.status = "Available";
+      req.updatedAt = now;
+      renderList();
+      renderDetail();
+      showToast("已发布为 Available");
+    }
+
+    function claimRequirement(req) {
+      if (role !== "dev") {
+        showToast("仅 Developer 可接单");
+        return;
+      }
+      if (req.status !== "Available") {
+        showToast("当前状态无法接单");
+        return;
+      }
+      if (!confirm("确认接单并进入 In Progress？")) return;
+      const now = addHistoryEntry(req.id, req.status, "In Progress", "开发者接单");
+      req.status = "In Progress";
+      req.owner = userName;
+      req.updatedAt = now;
+      state.completions[req.id] = { client: false, dev: false };
+      renderList();
+      renderDetail();
+      showToast("已进入 In Progress");
+    }
+
+    function rollbackToPreview(req) {
+      if (req.status !== "Available") {
+        showToast("仅 Available 可退回 Preview");
+        return;
+      }
+      if (role !== "client") {
+        showToast("仅 Client 可退回 Preview");
+        return;
+      }
+      if (!confirm("确认退回 Preview 重新修改？")) return;
+      const now = addHistoryEntry(req.id, req.status, "Preview", "退回修改");
+      req.status = "Preview";
+      req.updatedAt = now;
+      editState.reqId = null;
+      editState.functions = [];
+      editState.nonfunctions = [];
+      renderList();
+      renderDetail();
+      showToast("已退回 Preview，可修改");
+    }
+
+    function createSubform(req, fns, nfrs) {
+      if (req.status !== "In Progress") {
+        showToast("仅 In Progress 可创建 Subform");
+        return;
+      }
+      if (!confirm("确认进入 Rewrite 协商？")) return;
+      if (state.subforms[req.id]) {
+        showToast("Subform 已存在");
+        return;
+      }
+      state.subforms[req.id] = {
+        previousStatus: req.status,
+        title: req.title,
+        budget: req.budget || "",
+        expectedTime: req.expectedTime || "",
+        tags: req.tags ? [...req.tags] : [],
+        desc: req.desc || "",
+        functions: fns.map(f => ({ name: f.name, level: f.level, desc: f.desc || "" })),
+        nonfunctions: nfrs.map(n => ({
+          name: n.name,
+          level: n.level,
+          status: n.status,
+          weight: n.weight || 5
+        }))
+      };
+      const now = addHistoryEntry(req.id, req.status, "Rewrite", "创建 Subform");
+      req.status = "Rewrite";
+      req.updatedAt = now;
+      state.completions[req.id] = { client: false, dev: false };
+      renderList();
+      renderDetail();
+      showToast("Subform 已创建（Rewrite）");
+    }
+
+    function saveSubform(req) {
+      const subform = state.subforms[req.id];
+      if (!subform) return;
+      subform.title = (document.getElementById("sf-title")?.value || "").trim();
+      subform.budget = (document.getElementById("sf-budget")?.value || "").trim();
+      subform.expectedTime = (document.getElementById("sf-time")?.value || "").trim();
+      subform.desc = (document.getElementById("sf-desc")?.value || "").trim();
+      subform.tags = (document.getElementById("sf-tags")?.value || "")
+        .split(",")
+        .map(t => t.trim())
+        .filter(Boolean);
+
+      const newFns = [];
+      for (let i = 0; i < (subform.functions || []).length; i += 1) {
+        const name = (document.getElementById(`sf-fn-name-${i}`)?.value || "").trim();
+        const level = document.getElementById(`sf-fn-level-${i}`)?.value || "commercial";
+        const desc = (document.getElementById(`sf-fn-desc-${i}`)?.value || "").trim();
+        if (name) newFns.push({ name, level, desc });
+      }
+      subform.functions = newFns;
+
+      const newNfrs = [];
+      for (let i = 0; i < (subform.nonfunctions || []).length; i += 1) {
+        const name = (document.getElementById(`sf-nfr-name-${i}`)?.value || "").trim();
+        const level = document.getElementById(`sf-nfr-level-${i}`)?.value || "commercial";
+        const status = document.getElementById(`sf-nfr-status-${i}`)?.value || "init";
+        const weight = Number(document.getElementById(`sf-nfr-weight-${i}`)?.value || 5);
+        if (name) newNfrs.push({ name, level, status, weight });
+      }
+      subform.nonfunctions = newNfrs;
+      showToast("Subform 已保存");
+      renderDetail();
+    }
+
+    function rejectSubform(req) {
+      const subform = state.subforms[req.id];
+      if (!subform) return;
+      const previousStatus = subform.previousStatus || "In Progress";
+      delete state.subforms[req.id];
+      const now = addHistoryEntry(req.id, req.status, previousStatus, "拒绝 Subform");
+      req.status = previousStatus;
+      req.updatedAt = now;
+      state.completions[req.id] = { client: false, dev: false };
+      renderList();
+      renderDetail();
+      showToast("已拒绝 Subform");
+    }
+
+    function mergeSubform(req) {
+      const subform = state.subforms[req.id];
+      if (!subform) return;
+      if (!confirm("确认双方同意并合并 Subform，返回 In Progress？")) return;
+      req.title = subform.title || req.title;
+      req.budget = subform.budget || "";
+      req.expectedTime = subform.expectedTime || "";
+      req.tags = subform.tags ? [...subform.tags] : [];
+      req.desc = subform.desc || "";
+      state.functions[req.id] = (subform.functions || []).map(f => ({
+        name: f.name,
+        level: f.level,
+        desc: f.desc || "",
+        is_changed: false
+      }));
+      state.nonfunctions[req.id] = (subform.nonfunctions || []).map(n => ({
+        name: n.name,
+        level: n.level,
+        status: n.status,
+        weight: n.weight || 5,
+        is_changed: false
+      }));
+      delete state.subforms[req.id];
+      const now = addHistoryEntry(req.id, req.status, "In Progress", "合并 Subform");
+      req.status = "In Progress";
+      req.updatedAt = now;
+      state.completions[req.id] = { client: false, dev: false };
+      renderList();
+      renderDetail();
+      showToast("已合并 Subform");
+    }
+
+    function markError(req) {
+      if (req.status !== "Rewrite") {
+        showToast("仅 Rewrite 可标记 Error");
+        return;
+      }
+      if (!confirm("确认标记为 Error？（双方任意一方均可）")) return;
+      delete state.subforms[req.id];
+      const now = addHistoryEntry(req.id, req.status, "Error", "标记为 Error");
+      req.status = "Error";
+      req.updatedAt = now;
+      state.completions[req.id] = { client: false, dev: false };
+      renderList();
+      renderDetail();
+      showToast("已标记为 Error");
+    }
+
+    function confirmCompletion(req) {
+      if (req.status !== "In Progress") {
+        showToast("仅 In Progress 可确认完成");
+        return;
+      }
+      if (!confirm("确认完成？需要双方都同意后进入 End")) return;
+      const flags = state.completions[req.id] || { client: false, dev: false };
+      if (role === "client") {
+        flags.client = true;
+        addHistoryEntry(req.id, req.status, req.status, "Client 确认完成");
+      } else if (role === "dev") {
+        flags.dev = true;
+        addHistoryEntry(req.id, req.status, req.status, "Developer 确认完成");
+      } else {
+        showToast("当前角色不可确认完成");
+        return;
+      }
+      state.completions[req.id] = flags;
+      if (flags.client && flags.dev) {
+        const now = addHistoryEntry(req.id, req.status, "End", "双方确认完成");
+        req.status = "End";
+        req.updatedAt = now;
+      }
+      renderList();
+      renderDetail();
+      showToast(flags.client && flags.dev ? "需求已完成" : "完成确认已记录");
+    }
+
+    function renderDetail() {
+      if (state.selectedId === "new") {
+        renderNewProject();
+        return;
+      }
+      const req = state.requirements.find(r => r.id === state.selectedId);
+      if (!req) {
+        detailEl.innerHTML = `<p style="color:var(--muted);margin:0;">请选择左侧需求查看详情</p>`;
+        return;
+      }
+      const discussionEnabled = ["In Progress", "Rewrite", "End", "Error"].includes(req.status);
+      const preferredView = getDefaultView(req.status);
+      const lastStatus = uiState.statusCache[req.id];
+      const statusChanged = !!lastStatus && lastStatus !== req.status;
+      const isNewSelection = uiState.lastReq !== req.id;
+      if (!discussionEnabled) {
+        uiState.view = "detail";
+      } else if (isNewSelection || statusChanged) {
+        uiState.view = preferredView;
+      } else if (uiState.view !== "chat" && uiState.view !== "detail") {
+        uiState.view = preferredView;
+      }
+      uiState.lastReq = req.id;
+      uiState.statusCache[req.id] = req.status;
+      const messageBlocks = state.messages[req.id] || { general: [], function: [], nonfunction: [] };
+      uiState.pendingFiles[req.id] = uiState.pendingFiles[req.id] || [];
+      const pendingFiles = uiState.pendingFiles[req.id];
+      const fns = state.functions[req.id] || [];
+      const nfrs = state.nonfunctions[req.id] || [];
+      const subform = state.subforms[req.id] || null;
+      const isPreview = req.status === "Preview";
+      if (isPreview) {
+        if (editState.reqId !== req.id) {
+          editState.reqId = req.id;
+          editState.functions = fns.map(f => ({ name: f.name, level: f.level, desc: f.desc || "" }));
+          editState.nonfunctions = nfrs.map(n => ({
+            name: n.name,
+            level: n.level,
+            status: n.status,
+            weight: n.weight
+          }));
+        }
+      } else {
+        editState.reqId = null;
+        editState.functions = [];
+        editState.nonfunctions = [];
+      }
+      const history = state.histories[req.id] || [];
+      const completion = state.completions[req.id] || { client: false, dev: false };
+      const activeBlock = ["general", "function", "nonfunction"].includes(uiState.block) ? uiState.block : "general";
+      uiState.block = activeBlock;
+      const targets = activeBlock === "function"
+        ? fns.map(f => f.name)
+        : activeBlock === "nonfunction"
+          ? nfrs.map(n => n.name)
+          : [];
+      if (activeBlock === "general") {
+        uiState.target = "";
+      } else if (targets.length && !targets.includes(uiState.target)) {
+        uiState.target = targets[0];
+      } else if (!targets.length) {
+        uiState.target = "";
+      }
+      const msgs = messageBlocks[activeBlock] || [];
+      const actionButtons = [];
+      if (req.status === "Preview") {
+        actionButtons.push(`<button class="btn primary" id="publishBtn">发布为 Available</button>`);
+      }
+      if (role === "client" && req.status === "Available") {
+        actionButtons.push(`<button class="btn" id="rollbackBtn">退回 Preview 修改</button>`);
+        actionButtons.push(`<span class="badge">等待 Developer 接单</span>`);
+      } else if (req.status === "Available") {
+        actionButtons.push(`<span class="badge">等待 Developer 接单</span>`);
+      }
+      if (req.status === "Rewrite") {
+        actionButtons.push(`<button class="btn danger" id="errorBtn">标记 Error</button>`);
+      }
+      if (req.status === "In Progress" && (role === "client" || role === "dev")) {
+        const alreadyConfirmed = role === "client" ? completion.client : completion.dev;
+        if (!alreadyConfirmed) {
+          const label = role === "client" ? "客户端确认完成" : "开发者确认完成";
+          actionButtons.push(`<button class="btn" id="confirmEndBtn">${label}</button>`);
+        } else {
+          actionButtons.push(`<span class="badge">已记录${role === "client" ? "客户端" : "开发者"}确认</span>`);
+        }
+      }
+      const completionBadges = req.status === "In Progress"
+        ? `<span class="badge">Client 确认: ${completion.client ? "是" : "否"}</span>
+           <span class="badge">Developer 确认: ${completion.dev ? "是" : "否"}</span>`
+        : "";
+      const actionBarHtml = actionButtons.length || completionBadges
+        ? `<div class="action-bar">${actionButtons.join("")}${completionBadges}</div>`
+        : "";
+      const pendingConf = req.status === "In Progress"
+        ? ["Client", "Developer"].filter(r => r === "Client" ? !completion.client : !completion.dev)
+        : [];
+      const waitingHtml = pendingConf.length
+        ? `<div class="callout" style="margin-top:10px;">等待 ${pendingConf.join(" / ")} 确认</div>`
+        : "";
+      const renderEditFnRows = () => editState.functions.length
+        ? editState.functions.map((f, index) => `
+            <div class="item-row">
+              <div style="flex:1;">
+                <div class="inline-grid">
+                  <div>
+                    <label>名称</label>
+                    <input id="edit-fn-name-${index}" value="${f.name || ""}" />
+                  </div>
+                  <div>
+                    <label>等级</label>
+                    <select id="edit-fn-level-${index}">
+                      <option value="lightweight" ${f.level === "lightweight" ? "selected" : ""}>Lightweight</option>
+                      <option value="commercial" ${f.level === "commercial" ? "selected" : ""}>Commercial</option>
+                      <option value="enterprise" ${f.level === "enterprise" ? "selected" : ""}>Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>描述</label>
+                    <input id="edit-fn-desc-${index}" value="${f.desc || ""}" />
+                  </div>
+                </div>
+              </div>
+              <button class="btn ghost small" type="button" data-edit-fn-remove="${index}">移除</button>
+            </div>
+          `).join("")
+        : `<p style="color:var(--muted);margin:0;font-size:12px;">暂无功能需求</p>`;
+
+      const renderEditNfrRows = () => editState.nonfunctions.length
+        ? editState.nonfunctions.map((n, index) => `
+            <div class="item-row">
+              <div style="flex:1;">
+                <div class="inline-grid">
+                  <div>
+                    <label>名称</label>
+                    <input id="edit-nfr-name-${index}" value="${n.name || ""}" />
+                  </div>
+                  <div>
+                    <label>等级</label>
+                    <select id="edit-nfr-level-${index}">
+                      <option value="lightweight" ${n.level === "lightweight" ? "selected" : ""}>Lightweight</option>
+                      <option value="commercial" ${n.level === "commercial" ? "selected" : ""}>Commercial</option>
+                      <option value="enterprise" ${n.level === "enterprise" ? "selected" : ""}>Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>状态</label>
+                    <select id="edit-nfr-status-${index}">
+                      <option value="init" ${n.status === "init" ? "selected" : ""}>init</option>
+                      <option value="developing" ${n.status === "developing" ? "selected" : ""}>developing</option>
+                      <option value="finish" ${n.status === "finish" ? "selected" : ""}>finish</option>
+                      <option value="error" ${n.status === "error" ? "selected" : ""}>error</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>权重</label>
+                    <input id="edit-nfr-weight-${index}" type="number" min="1" max="10" value="${n.weight || 5}" />
+                  </div>
+                </div>
+              </div>
+              <button class="btn ghost small" type="button" data-edit-nfr-remove="${index}">移除</button>
+            </div>
+          `).join("")
+        : `<p style="color:var(--muted);margin:0;font-size:12px;">暂无非功能需求</p>`;
+
+      const fnSectionHtml = isPreview
+        ? `
+          <div class="section">
+            <h4>编辑 Preview 表单</h4>
+            <div class="inline-grid">
+              <div>
+                <label for="edit-title">标题</label>
+                <input id="edit-title" value="${req.title || ""}" />
+              </div>
+              <div>
+                <label for="edit-budget">预算</label>
+                <input id="edit-budget" value="${req.budget || ""}" />
+              </div>
+              <div>
+                <label for="edit-time">预计交付</label>
+                <input id="edit-time" value="${req.expectedTime || ""}" />
+              </div>
+            </div>
+            <div>
+              <label for="edit-tags">标签（逗号分隔）</label>
+              <input id="edit-tags" value="${(req.tags || []).join(", ")}" />
+            </div>
+            <div>
+              <label for="edit-desc">需求描述</label>
+              <textarea id="edit-desc">${req.desc || ""}</textarea>
+            </div>
+          </div>
+          <div class="section">
+            <h4>功能需求（可编辑）</h4>
+            <div class="item-list" id="edit-fn-list">${renderEditFnRows()}</div>
+            <div class="inline-grid" style="margin-top:8px;">
+              <div>
+                <label for="edit-new-fn-name">新功能名称</label>
+                <input id="edit-new-fn-name" placeholder="如：CSV 导出" />
+              </div>
+              <div>
+                <label for="edit-new-fn-level">等级</label>
+                <select id="edit-new-fn-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="edit-new-fn-desc">描述</label>
+                <input id="edit-new-fn-desc" placeholder="如：支持筛选条件输出" />
+              </div>
+              <button class="btn primary" type="button" id="edit-add-fn">添加功能</button>
+            </div>
+          </div>
+          <div class="section">
+            <h4>非功能需求（可编辑）</h4>
+            <div class="item-list" id="edit-nfr-list">${renderEditNfrRows()}</div>
+            <div class="inline-grid" style="margin-top:8px;">
+              <div>
+                <label for="edit-new-nfr-name">新非功能名称</label>
+                <input id="edit-new-nfr-name" placeholder="如：可用性" />
+              </div>
+              <div>
+                <label for="edit-new-nfr-level">等级</label>
+                <select id="edit-new-nfr-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="edit-new-nfr-status">状态</label>
+                <select id="edit-new-nfr-status">
+                  <option value="init" selected>init</option>
+                  <option value="developing">developing</option>
+                  <option value="finish">finish</option>
+                  <option value="error">error</option>
+                </select>
+              </div>
+              <div>
+                <label for="edit-new-nfr-weight">权重</label>
+                <input id="edit-new-nfr-weight" type="number" min="1" max="10" value="5" />
+              </div>
+              <button class="btn primary" type="button" id="edit-add-nfr">添加非功能</button>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button class="btn primary" id="savePreviewBtn">保存修改（保持 Preview）</button>
+          </div>
+        `
+        : `
+          <div class="fn-section">
+            <h4 style="margin:8px 0 6px;">功能需求</h4>
+            ${fns.length ? fns.map(f => `
+              <div class="fn-card">
+                <div class="fn-title">${f.name}</div>
+                ${f.desc ? `<div class="fn-desc">${f.desc}</div>` : ""}
+                <div class="fn-meta">
+                  <span class="badge">等级: ${f.level}</span>
+                  ${f.is_changed ? `<span class="fn-changed">is_changed</span>` : `<span class="badge">is_changed: 0</span>`}
+                </div>
+              </div>
+            `).join("") : `<p style="color:var(--muted);margin:0;">暂无功能需求</p>`}
+            <h4 style="margin:14px 0 6px;">非功能需求</h4>
+            ${nfrs.length ? nfrs.map(n => `
+              <div class="fn-card">
+                <div class="fn-title">${n.name}</div>
+                <div class="fn-meta">
+                  <span class="badge">等级: ${n.level}</span>
+                  <span class="badge">状态: ${n.status}</span>
+                  ${typeof n.weight === "number" ? `<span class="badge">权重: ${n.weight}</span>` : ""}
+                  ${n.is_changed ? `<span class="fn-changed">is_changed</span>` : `<span class="badge">is_changed: 0</span>`}
+                </div>
+              </div>
+            `).join("") : `<p style="color:var(--muted);margin:0;">暂无非功能需求</p>`}
+          </div>
+        `;
+      const descHtml = isPreview ? "" : `<p>${req.desc || "暂无描述"}</p>`;
+      let subformHtml = "";
+      if (subform) {
+        const changedFields = [];
+        if ((subform.title || "") !== (req.title || "")) changedFields.push("标题");
+        if ((subform.budget || "") !== (req.budget || "")) changedFields.push("预算");
+        if ((subform.expectedTime || "") !== (req.expectedTime || "")) changedFields.push("交付");
+        if ((subform.desc || "") !== (req.desc || "")) changedFields.push("描述");
+        const mainTags = (req.tags || []).join(", ");
+        const subTags = (subform.tags || []).join(", ");
+        if (mainTags !== subTags) changedFields.push("标签");
+        const diffNote = changedFields.length ? `已修改: ${changedFields.join(" / ")}` : "暂无字段修改";
+        const subFnRows = (subform.functions || []).length
+          ? subform.functions.map((f, index) => {
+              const changed = isFnChanged(f, fns[index]);
+              return `
+                <div class="item-row">
+                  <div style="flex:1;">
+                    <div class="inline-grid">
+                      <div>
+                        <label>名称</label>
+                        <input id="sf-fn-name-${index}" value="${f.name || ""}" />
+                      </div>
+                      <div>
+                        <label>等级</label>
+                        <select id="sf-fn-level-${index}">
+                          <option value="lightweight" ${f.level === "lightweight" ? "selected" : ""}>Lightweight</option>
+                          <option value="commercial" ${f.level === "commercial" ? "selected" : ""}>Commercial</option>
+                          <option value="enterprise" ${f.level === "enterprise" ? "selected" : ""}>Enterprise</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label>描述</label>
+                        <input id="sf-fn-desc-${index}" value="${f.desc || ""}" />
+                      </div>
+                    </div>
+                    <div class="item-meta" style="margin-top:6px;">
+                      ${changed ? `<span class="fn-changed">is_changed</span>` : `<span>is_changed: 0</span>`}
+                    </div>
+                  </div>
+                  <button class="btn ghost small" type="button" data-sf-fn-remove="${index}">移除</button>
+                </div>
+              `;
+            }).join("")
+          : `<p style="color:var(--muted);margin:0;font-size:12px;">暂无功能需求</p>`;
+
+        const subNfrRows = (subform.nonfunctions || []).length
+          ? subform.nonfunctions.map((n, index) => {
+              const changed = isNfrChanged(n, nfrs[index]);
+              return `
+                <div class="item-row">
+                  <div style="flex:1;">
+                    <div class="inline-grid">
+                      <div>
+                        <label>名称</label>
+                        <input id="sf-nfr-name-${index}" value="${n.name || ""}" />
+                      </div>
+                      <div>
+                        <label>等级</label>
+                        <select id="sf-nfr-level-${index}">
+                          <option value="lightweight" ${n.level === "lightweight" ? "selected" : ""}>Lightweight</option>
+                          <option value="commercial" ${n.level === "commercial" ? "selected" : ""}>Commercial</option>
+                          <option value="enterprise" ${n.level === "enterprise" ? "selected" : ""}>Enterprise</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label>状态</label>
+                        <select id="sf-nfr-status-${index}">
+                          <option value="init" ${n.status === "init" ? "selected" : ""}>init</option>
+                          <option value="developing" ${n.status === "developing" ? "selected" : ""}>developing</option>
+                          <option value="finish" ${n.status === "finish" ? "selected" : ""}>finish</option>
+                          <option value="error" ${n.status === "error" ? "selected" : ""}>error</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label>权重</label>
+                        <input id="sf-nfr-weight-${index}" type="number" min="1" max="10" value="${n.weight || 5}" />
+                      </div>
+                    </div>
+                    <div class="item-meta" style="margin-top:6px;">
+                      ${changed ? `<span class="fn-changed">is_changed</span>` : `<span>is_changed: 0</span>`}
+                    </div>
+                  </div>
+                  <button class="btn ghost small" type="button" data-sf-nfr-remove="${index}">移除</button>
+                </div>
+              `;
+            }).join("")
+          : `<p style="color:var(--muted);margin:0;font-size:12px;">暂无非功能需求</p>`;
+
+        subformHtml = `
+          <div class="section">
+            <h4>Subform 协商（Rewrite）</h4>
+            <div class="callout" style="margin-top:6px;">${diffNote}</div>
+            ${req.status === "Rewrite" ? `<div class="callout" style="margin-top:6px;background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.5);color:#c7d7fe;">已提交 Subform，等待 Developer 确认或标记结果</div>` : ""}
+            <div class="subform-grid">
+              <div>
+                <label for="sf-title">标题</label>
+                <input id="sf-title" value="${subform.title || ""}" />
+              </div>
+              <div>
+                <label for="sf-budget">预算</label>
+                <input id="sf-budget" value="${subform.budget || ""}" />
+              </div>
+              <div>
+                <label for="sf-time">预计交付</label>
+                <input id="sf-time" value="${subform.expectedTime || ""}" />
+              </div>
+              <div>
+                <label for="sf-tags">标签</label>
+                <input id="sf-tags" value="${(subform.tags || []).join(", ")}" />
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label for="sf-desc">Subform 描述</label>
+              <textarea id="sf-desc">${subform.desc || ""}</textarea>
+            </div>
+            <h4 style="margin:12px 0 6px;">Subform 功能需求</h4>
+            <div class="item-list">${subFnRows}</div>
+            <div class="inline-grid" style="margin-top:8px;">
+              <div>
+                <label for="sf-new-fn-name">新功能名称</label>
+                <input id="sf-new-fn-name" placeholder="如：筛选条件记忆" />
+              </div>
+              <div>
+                <label for="sf-new-fn-level">等级</label>
+                <select id="sf-new-fn-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="sf-new-fn-desc">描述</label>
+                <input id="sf-new-fn-desc" placeholder="如：保留筛选设置" />
+              </div>
+              <button class="btn primary" type="button" id="sf-add-fn">添加功能</button>
+            </div>
+            <h4 style="margin:12px 0 6px;">Subform 非功能需求</h4>
+            <div class="item-list">${subNfrRows}</div>
+            <div class="inline-grid" style="margin-top:8px;">
+              <div>
+                <label for="sf-new-nfr-name">新非功能名称</label>
+                <input id="sf-new-nfr-name" placeholder="如：可用性" />
+              </div>
+              <div>
+                <label for="sf-new-nfr-level">等级</label>
+                <select id="sf-new-nfr-level">
+                  <option value="lightweight">Lightweight</option>
+                  <option value="commercial" selected>Commercial</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label for="sf-new-nfr-status">状态</label>
+                <select id="sf-new-nfr-status">
+                  <option value="init" selected>init</option>
+                  <option value="developing">developing</option>
+                  <option value="finish">finish</option>
+                  <option value="error">error</option>
+                </select>
+              </div>
+              <div>
+                <label for="sf-new-nfr-weight">权重</label>
+                <input id="sf-new-nfr-weight" type="number" min="1" max="10" value="5" />
+              </div>
+              <button class="btn primary" type="button" id="sf-add-nfr">添加非功能</button>
+            </div>
+            <div class="subform-actions">
+              <button class="btn primary" id="saveSubformBtn">保存 Subform</button>
+              <button class="btn ghost" id="rejectSubformBtn">拒绝 Subform</button>
+              <span class="badge" style="color:#fbbf24;border-color:rgba(251,191,36,0.6);">等待 Developer 确认</span>
+            </div>
+          </div>
+        `;
+      } else if (req.status === "In Progress") {
+        subformHtml = `
+          <div class="section">
+            <h4>Subform 协商（Rewrite）</h4>
+            <p style="color:var(--muted);margin:0;">尚未创建 Subform。</p>
+            <div class="subform-actions">
+              <button class="btn warn" id="createSubformBtn">创建 Subform</button>
+            </div>
+          </div>
+        `;
+      }
+      const historyHtml = `
+        <div class="section">
+          <h4>状态历史</h4>
+          <div class="item-list">
+            ${history.length ? history.map(h => `
+              <div class="item-row">
+                <div>
+                  <div class="item-title">${h.from ? `${h.from} → ${h.to}` : h.to}</div>
+                  <div class="item-meta">
+                    <span>${h.time}</span>
+                    <span>操作者: ${h.actor}</span>
+                    ${h.note ? `<span>备注: ${h.note}</span>` : ""}
+                  </div>
+                </div>
+              </div>
+            `).join("") : `<p style="color:var(--muted);margin:0;font-size:12px;">暂无状态记录</p>`}
+          </div>
+        </div>
+      `;
+
+      const detailSection = `
+        ${descHtml}
+        ${subformHtml}
+        ${historyHtml}
+        ${fnSectionHtml}
+      `;
+
+      const chatSection = discussionEnabled ? `
+        <div class="section">
+          <h4>讨论区（Blocks）</h4>
+          <div class="action-bar">
+            <div class="tabs">
+              <button class="tab ${activeBlock === "general" ? "active" : ""}" data-block="general">general</button>
+              <button class="tab ${activeBlock === "function" ? "active" : ""}" data-block="function">function</button>
+              <button class="tab ${activeBlock === "nonfunction" ? "active" : ""}" data-block="nonfunction">nonfunction</button>
+            </div>
+            ${activeBlock !== "general" ? `
+              <div style="min-width:200px;">
+                <label for="blockTarget">关联目标</label>
+                <select id="blockTarget">
+                  ${targets.length ? targets.map(t => `<option value="${t}" ${t === uiState.target ? "selected" : ""}>${t}</option>`).join("") : `<option value="">暂无可选项</option>`}
+                </select>
+              </div>
+            ` : `<span class="badge">通用讨论区</span>`}
+          </div>
+          <div class="messages">
+            ${msgs.map(m => `
+              <div class="msg">
+                <div class="msg-head">
+                  <strong>${m.author}</strong>
+                  <span>· ${m.role}</span>
+                  <span>· ${m.time}</span>
+                  ${m.target ? `<span>· ${m.target}</span>` : ""}
+                </div>
+              <div class="msg-body">${m.text}</div>
+              ${m.attachments && m.attachments.length ? `<div class="attachments">${m.attachments.map(a => `<span class="tag">${a}</span>`).join("")}</div>` : ""}
+            </div>
+            `).join("") || "<p style='color:var(--muted);margin:0;'>暂无消息</p>"}
+          </div>
+          <div class="callout">附件大小上限 ${ATTACH_LIMIT}，超限请改用外链（示例：GitHub/Drive 链接）。</div>
+          <div class="form" id="msgForm">
+            <div>
+              <label for="msg-text">新增消息</label>
+              <textarea id="msg-text" placeholder="输入消息内容"></textarea>
+            </div>
+            <div>
+              <label for="msg-attachments">附件（≤ ${ATTACH_LIMIT}，逗号分隔，如：spec.pdf, screenshot.png）</label>
+              <input id="msg-attachments" placeholder="可选" />
+            </div>
+            <div>
+              <label for="msg-file">选择本地附件（≤ ${ATTACH_LIMIT}）</label>
+              <input id="msg-file" type="file" multiple />
+            </div>
+            <div class="attachments" id="msg-file-list" style="min-height:24px;">
+              ${pendingFiles.length ? pendingFiles.map(f => `<span class="tag">${f}</span>`).join("") : `<span style="color:var(--muted);font-size:12px;">暂无已选文件</span>`}
+            </div>
+            <button class="btn primary" id="sendMsgBtn">发送</button>
+          </div>
+        </div>
+      ` : `
+        <div class="section">
+          <h4>讨论区（Blocks）</h4>
+          <p style="color:var(--muted);margin:0;">讨论区仅在 In Progress / Rewrite / End / Error 状态开放。</p>
+        </div>
+      `;
+
+      const viewToggle = discussionEnabled ? `
+        <div class="action-bar" style="margin-top:8px;">
+          <button class="btn ${uiState.view === "chat" ? "primary" : ""}" id="viewChatBtn">讨论</button>
+          <button class="btn ${uiState.view === "detail" ? "primary" : ""}" id="viewDetailBtn">详情</button>
+        </div>
+      ` : "";
+
+      const bodySections = uiState.view === "chat" && discussionEnabled
+        ? `${chatSection}${detailSection}`
+        : `${detailSection}${chatSection}`;
+
+      detailEl.innerHTML = `
+        <div class="detail-header">
+          <h3 class="detail-title">${req.title}</h3>
+          ${statusPill(req.status)}
+        </div>
+        <div class="stack">
+          <span class="badge">需求号 #${req.id}</span>
+          <span class="badge">更新: ${req.updatedAt}</span>
+          <span class="badge">负责人: ${req.owner}</span>
+          ${req.budget ? `<span class="badge">预算: ${req.budget}</span>` : ""}
+          ${req.expectedTime ? `<span class="badge">交付: ${req.expectedTime}</span>` : ""}
+          ${req.tags && req.tags.length ? `<span class="badge">标签: ${req.tags.join(", ")}</span>` : ""}
+        </div>
+        ${actionBarHtml}
+        ${waitingHtml}
+        ${viewToggle}
+        ${bodySections}
+      `;
+
+      const publishBtn = document.getElementById("publishBtn");
+      if (publishBtn) {
+        publishBtn.addEventListener("click", () => publishRequirement(req));
+      }
+
+      const rollbackBtn = document.getElementById("rollbackBtn");
+      if (rollbackBtn) {
+        rollbackBtn.addEventListener("click", () => rollbackToPreview(req));
+      }
+
+      const errorBtn = document.getElementById("errorBtn");
+      if (errorBtn) {
+        errorBtn.addEventListener("click", () => markError(req));
+      }
+
+      const confirmEndBtn = document.getElementById("confirmEndBtn");
+      if (confirmEndBtn) {
+        confirmEndBtn.addEventListener("click", () => confirmCompletion(req));
+      }
+
+      const createSubformBtn = document.getElementById("createSubformBtn");
+      if (createSubformBtn) {
+        createSubformBtn.addEventListener("click", () => createSubform(req, fns, nfrs));
+      }
+
+      const saveSubformBtn = document.getElementById("saveSubformBtn");
+      if (saveSubformBtn) {
+        saveSubformBtn.addEventListener("click", () => saveSubform(req));
+      }
+
+      const rejectSubformBtn = document.getElementById("rejectSubformBtn");
+      if (rejectSubformBtn) {
+        rejectSubformBtn.addEventListener("click", () => rejectSubform(req));
+      }
+
+      const addSubFnBtn = document.getElementById("sf-add-fn");
+      if (addSubFnBtn && subform) {
+        addSubFnBtn.addEventListener("click", () => {
+          const name = (document.getElementById("sf-new-fn-name")?.value || "").trim();
+          const level = document.getElementById("sf-new-fn-level")?.value || "commercial";
+          const desc = (document.getElementById("sf-new-fn-desc")?.value || "").trim();
+          if (!name) {
+            showToast("请输入 Subform 功能名称");
+            return;
+          }
+          subform.functions.push({ name, level, desc });
+          renderDetail();
+        });
+      }
+
+      const addSubNfrBtn = document.getElementById("sf-add-nfr");
+      if (addSubNfrBtn && subform) {
+        addSubNfrBtn.addEventListener("click", () => {
+          const name = (document.getElementById("sf-new-nfr-name")?.value || "").trim();
+          const level = document.getElementById("sf-new-nfr-level")?.value || "commercial";
+          const status = document.getElementById("sf-new-nfr-status")?.value || "init";
+          const weight = Number(document.getElementById("sf-new-nfr-weight")?.value || 5);
+          if (!name) {
+            showToast("请输入 Subform 非功能名称");
+            return;
+          }
+          if (!Number.isFinite(weight) || weight < 1 || weight > 10) {
+            showToast("权重需要在 1-10 之间");
+            return;
+          }
+          subform.nonfunctions.push({ name, level, status, weight });
+          renderDetail();
+        });
+      }
+
+      document.querySelectorAll("[data-sf-fn-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const index = Number(btn.dataset.sfFnRemove);
+          if (subform && Number.isInteger(index)) {
+            subform.functions.splice(index, 1);
+            renderDetail();
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-sf-nfr-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const index = Number(btn.dataset.sfNfrRemove);
+          if (subform && Number.isInteger(index)) {
+            subform.nonfunctions.splice(index, 1);
+            renderDetail();
+          }
+        });
+      });
+
+      const viewChatBtn = document.getElementById("viewChatBtn");
+      if (viewChatBtn) {
+        viewChatBtn.addEventListener("click", () => {
+          uiState.view = "chat";
+          renderDetail();
+        });
+      }
+      const viewDetailBtn = document.getElementById("viewDetailBtn");
+      if (viewDetailBtn) {
+        viewDetailBtn.addEventListener("click", () => {
+          uiState.view = "detail";
+          renderDetail();
+        });
+      }
+
+      if (isPreview) {
+        const syncEditStateFromInputs = () => {
+          const fnUpdated = [];
+          for (let i = 0; i < editState.functions.length; i += 1) {
+            const name = (document.getElementById(`edit-fn-name-${i}`)?.value || "").trim();
+            const level = document.getElementById(`edit-fn-level-${i}`)?.value || "commercial";
+            const desc = (document.getElementById(`edit-fn-desc-${i}`)?.value || "").trim();
+            if (name) fnUpdated.push({ name, level, desc });
+          }
+          editState.functions = fnUpdated;
+
+          const nfrUpdated = [];
+          for (let i = 0; i < editState.nonfunctions.length; i += 1) {
+            const name = (document.getElementById(`edit-nfr-name-${i}`)?.value || "").trim();
+            const level = document.getElementById(`edit-nfr-level-${i}`)?.value || "commercial";
+            const status = document.getElementById(`edit-nfr-status-${i}`)?.value || "init";
+            const weight = Number(document.getElementById(`edit-nfr-weight-${i}`)?.value || 5);
+            if (!name) continue;
+            const safeWeight = Number.isFinite(weight) ? Math.min(10, Math.max(1, weight)) : 5;
+            nfrUpdated.push({ name, level, status, weight: safeWeight });
+          }
+          editState.nonfunctions = nfrUpdated;
+        };
+
+        const renderEditListsInline = () => {
+          const fnList = document.getElementById("edit-fn-list");
+          const nfrList = document.getElementById("edit-nfr-list");
+          if (!fnList || !nfrList) return;
+          fnList.innerHTML = renderEditFnRows();
+          nfrList.innerHTML = renderEditNfrRows();
+          fnList.querySelectorAll("[data-edit-fn-remove]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const index = Number(btn.dataset.editFnRemove);
+              if (Number.isInteger(index)) {
+                syncEditStateFromInputs();
+                editState.functions.splice(index, 1);
+                renderEditListsInline();
+              }
+            });
+          });
+          nfrList.querySelectorAll("[data-edit-nfr-remove]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const index = Number(btn.dataset.editNfrRemove);
+              if (Number.isInteger(index)) {
+                syncEditStateFromInputs();
+                editState.nonfunctions.splice(index, 1);
+                renderEditListsInline();
+              }
+            });
+          });
+        };
+
+        renderEditListsInline();
+
+        const editAddFnBtn = document.getElementById("edit-add-fn");
+        if (editAddFnBtn) {
+          editAddFnBtn.addEventListener("click", () => {
+            syncEditStateFromInputs();
+            const nameEl = document.getElementById("edit-new-fn-name");
+            const levelEl = document.getElementById("edit-new-fn-level");
+            const descEl = document.getElementById("edit-new-fn-desc");
+            const name = (nameEl?.value || "").trim();
+            const desc = (descEl?.value || "").trim();
+            if (!name) {
+              showToast("请输入功能名称");
+              return;
+            }
+            editState.functions.push({
+              name,
+              level: levelEl?.value || "commercial",
+              desc
+            });
+            if (nameEl) nameEl.value = "";
+            if (descEl) descEl.value = "";
+            if (levelEl) levelEl.value = "commercial";
+            renderEditListsInline();
+          });
+        }
+
+        const editAddNfrBtn = document.getElementById("edit-add-nfr");
+        if (editAddNfrBtn) {
+          editAddNfrBtn.addEventListener("click", () => {
+            syncEditStateFromInputs();
+            const nameEl = document.getElementById("edit-new-nfr-name");
+            const levelEl = document.getElementById("edit-new-nfr-level");
+            const statusEl = document.getElementById("edit-new-nfr-status");
+            const weightEl = document.getElementById("edit-new-nfr-weight");
+            const name = (nameEl?.value || "").trim();
+            const weight = Number(weightEl?.value || 0);
+            if (!name) {
+              showToast("请输入非功能名称");
+              return;
+            }
+            if (!Number.isFinite(weight) || weight < 1 || weight > 10) {
+              showToast("权重需要在 1-10 之间");
+              return;
+            }
+            editState.nonfunctions.push({
+              name,
+              level: levelEl?.value || "commercial",
+              status: statusEl?.value || "init",
+              weight
+            });
+            if (nameEl) nameEl.value = "";
+            if (weightEl) weightEl.value = "5";
+            if (levelEl) levelEl.value = "commercial";
+            if (statusEl) statusEl.value = "init";
+            renderEditListsInline();
+          });
+        }
+
+        const savePreviewBtn = document.getElementById("savePreviewBtn");
+        if (savePreviewBtn) {
+          savePreviewBtn.addEventListener("click", () => {
+            syncEditStateFromInputs();
+            const title = (document.getElementById("edit-title")?.value || "").trim();
+            const desc = (document.getElementById("edit-desc")?.value || "").trim();
+            const budget = (document.getElementById("edit-budget")?.value || "").trim();
+            const expectedTime = (document.getElementById("edit-time")?.value || "").trim();
+            const tags = (document.getElementById("edit-tags")?.value || "")
+              .split(",")
+              .map(t => t.trim())
+              .filter(Boolean);
+            if (!title) {
+              showToast("请输入标题");
+              return;
+            }
+            if (!editState.functions.length && !editState.nonfunctions.length) {
+              showToast("请至少添加一个功能或非功能需求");
+              return;
+            }
+            req.title = title;
+            req.budget = budget;
+            req.expectedTime = expectedTime;
+            req.desc = desc;
+            req.tags = tags;
+            const now = addHistoryEntry(req.id, req.status, req.status, "修改 Preview 内容");
+            req.updatedAt = now;
+            state.functions[req.id] = editState.functions.map(f => ({ ...f, is_changed: false }));
+            state.nonfunctions[req.id] = editState.nonfunctions.map(n => ({ ...n, is_changed: false }));
+            renderList();
+            renderDetail();
+            showToast("Preview 已保存");
+          });
+        }
+      }
+
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          uiState.block = btn.dataset.block;
+          uiState.target = "";
+          renderDetail();
+        });
+      });
+
+      const blockTarget = document.getElementById("blockTarget");
+      if (blockTarget) {
+        blockTarget.addEventListener("change", () => {
+          uiState.target = blockTarget.value;
+        });
+      }
+
+      const filePreviewEl = document.getElementById("msg-file-list");
+      const fileInputEl = document.getElementById("msg-file");
+      const renderPendingFiles = () => {
+        if (!filePreviewEl) return;
+        const list = uiState.pendingFiles[req.id] || [];
+        filePreviewEl.innerHTML = list.length
+          ? list.map(f => `<span class="tag">${f}</span>`).join("")
+          : `<span style="color:var(--muted);font-size:12px;">暂无已选文件</span>`;
+      };
+      if (fileInputEl) {
+        fileInputEl.addEventListener("change", () => {
+          const files = Array.from(fileInputEl.files || []);
+          if (!files.length) return;
+          uiState.pendingFiles[req.id] = uiState.pendingFiles[req.id] || [];
+          files.forEach((f) => {
+            if (f.size > FILE_LIMIT) {
+              showToast(`${f.name} 超出 ${ATTACH_LIMIT}`);
+              return;
+            }
+            uiState.pendingFiles[req.id].push(f.name);
+          });
+          fileInputEl.value = "";
+          renderPendingFiles();
+        });
+      }
+
+      const sendMsgBtn = document.getElementById("sendMsgBtn");
+      if (sendMsgBtn) {
+        sendMsgBtn.addEventListener("click", () => {
+          const textEl = document.getElementById("msg-text");
+          const attEl = document.getElementById("msg-attachments");
+          const text = (textEl.value || "").trim();
+          if (!text) {
+            showToast("请输入消息内容");
+            return;
+          }
+          const currentBlock = uiState.block || "general";
+          const target = uiState.target;
+          if ((currentBlock === "function" || currentBlock === "nonfunction") && !target) {
+            showToast("请选择关联目标");
+            return;
+          }
+          const atts = (attEl.value || "")
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean);
+          const pending = uiState.pendingFiles[req.id] || [];
+          const mergedAtts = [...atts, ...pending];
+          state.messages[req.id] = state.messages[req.id] || { general: [], function: [], nonfunction: [] };
+          state.messages[req.id][currentBlock].push({
+            author: userName,
+            role,
+            time: new Date().toISOString().replace("T", " ").substring(0, 16),
+            text,
+            attachments: mergedAtts,
+            target: currentBlock === "general" ? "" : target
+          });
+          textEl.value = "";
+          attEl.value = "";
+          if (uiState.pendingFiles[req.id]) uiState.pendingFiles[req.id].length = 0;
+          renderPendingFiles();
+          renderDetail();
+          showToast("消息已添加（前端模拟）");
+        });
+      }
+    }
+
+    document.getElementById("newProjectBtn").addEventListener("click", () => {
+      createState.functions = [];
+      createState.nonfunctions = [];
+      editState.reqId = null;
+      editState.functions = [];
+      editState.nonfunctions = [];
+      state.selectedId = "new";
+      uiState.block = "general";
+      uiState.target = "";
+      uiState.view = "detail";
+      uiState.lastReq = null;
+      renderList();
+      renderDetail();
+    });
+
+    reqListEl.addEventListener("click", (e) => {
+      const item = e.target.closest(".req-item");
+      if (!item) return;
+      editState.reqId = null;
+      editState.functions = [];
+      editState.nonfunctions = [];
+      const selected = Number(item.dataset.id);
+      state.selectedId = selected;
+      uiState.block = "general";
+      uiState.target = "";
+      const selectedReq = state.requirements.find(r => r.id === selected);
+      uiState.view = getDefaultView(selectedReq?.status || "Preview");
+      uiState.lastReq = selected;
+      renderList();
+      renderDetail();
+    });
+
+    renderLegend();
+    renderList();
+    // auto select first
+    state.selectedId = state.requirements[0]?.id || null;
+    renderList();
+    renderDetail();
+  </script>
+</body>
+</html>

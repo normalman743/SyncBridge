@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - SyncBridge Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --error: #f87171;
+      --success: #34d399;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.15), transparent 30%),
+                  var(--bg);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+    }
+    .brand { font-weight: 700; letter-spacing: 0.5px; }
+    nav { display: flex; align-items: center; gap: 12px; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: 10px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    nav a:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+    main {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      padding: 40px 20px 60px;
+    }
+    .card {
+      width: min(440px, 92vw);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    .card h1 { margin: 0 0 8px; font-size: 24px; }
+    .card p { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1221;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    input:focus {
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      border: none;
+      color: #0b1727;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(14, 165, 233, 0.25);
+    }
+    .status { margin-top: 12px; font-size: 14px; min-height: 22px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--error); }
+    .hint {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(56, 189, 248, 0.07);
+      border: 1px dashed rgba(56, 189, 248, 0.5);
+      border-radius: 12px;
+      font-size: 13px;
+      color: #cdeafe;
+    }
+    footer {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 540px) {
+      header { padding: 14px 18px; }
+      .card { padding: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">SyncBridge Demo</div>
+    <nav>
+      <a href="index.html">主页</a>
+      <a href="srs.html">SRS</a>
+      <a href="register.html">注册</a>
+      <a href="tbd.html">Demo</a>
+    </nav>
+    <div class="actions">
+      <button class="btn" onclick="window.location.href='register.html'">注册</button>
+      <button class="btn primary" onclick="window.location.href='login.html'">登录</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <h1>登录</h1>
+      <p>使用预设账号进行前端校验登录，成功后按角色跳转到对应页面（Client / Developer）。</p>
+      <form id="loginForm">
+        <label for="username">用户名</label>
+        <input id="username" name="username" placeholder="client 或 dev" autocomplete="username" required />
+
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" placeholder="密码" autocomplete="current-password" required />
+
+        <div class="row">
+          <span>登录后跳转到 Demo</span>
+          <button type="submit" class="btn primary">进入</button>
+        </div>
+        <div class="status" id="status"></div>
+      </form>
+      <div class="hint">
+        预设账号：client / client123 （跳转 Client 页面）<br>
+        预设账号：dev / dev123 （跳转 Developer 页面）<br>
+        或使用注册页创建的新账号再来登录
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    静态演示页，无任何真实后端调用
+  </footer>
+
+  <script>
+    const credentials = {
+      client: { password: "client123", role: "client", target: "client.html" },
+      dev: { password: "dev123", role: "dev", target: "developer.html" }
+    };
+
+    const form = document.getElementById("loginForm");
+    const statusEl = document.getElementById("status");
+
+    function showStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = "status " + (type || "");
+    }
+
+    function handleLogin(username, password) {
+      const stored = sessionStorage.getItem("demoRegisteredUser");
+      let matched = null;
+      if (credentials[username] && credentials[username].password === password) {
+        matched = credentials[username];
+      } else if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          if (data.username === username && data.password === password) {
+            matched = { role: data.role, target: data.role === "dev" ? "developer.html" : "client.html" };
+          }
+        } catch (_) {
+          /* ignore parse errors */
+        }
+      }
+
+      if (!matched) {
+        showStatus("用户名或密码不正确", "error");
+        return;
+      }
+
+      const role = matched.role || "client";
+      const target = matched.target || (role === "dev" ? "developer.html" : "client.html");
+      sessionStorage.setItem("demoUser", username);
+      sessionStorage.setItem("demoRole", role);
+      showStatus("登录成功，正在跳转…", "success");
+      setTimeout(() => { window.location.href = target; }, 400);
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = form.username.value.trim();
+      const password = form.password.value;
+      handleLogin(username, password);
+    });
+  </script>
+</body>
+</html>
