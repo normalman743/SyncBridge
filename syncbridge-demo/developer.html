@@ -528,6 +528,7 @@
     const availableListEl = document.getElementById("availableList");
     const detailEl = document.getElementById("detail");
     const uiState = { selectedId: null, block: "general", target: "", pendingFiles: {} };
+    const blockAlerts = {};
 
     function statusPill(status) {
       const lower = status.toLowerCase().replace(" ", "");
@@ -689,6 +690,7 @@
         detailEl.innerHTML = `<p style="color:var(--muted);margin:0;">请选择左侧需求查看详情</p>`;
         return;
       }
+      blockAlerts[req.id] = blockAlerts[req.id] || { general: "normal", function: "normal", nonfunction: "normal" };
       const fns = state.functions[req.id] || [];
       const nfrs = state.nonfunctions[req.id] || [];
       const messages = state.messages[req.id] || { general: [], function: [], nonfunction: [] };
@@ -712,6 +714,7 @@
         uiState.target = "";
       }
       const msgs = messages[activeBlock] || [];
+      const alertLevel = blockAlerts[req.id][activeBlock] || "normal";
 
       const actionButtons = [];
       if (req.status === "Available") {
@@ -837,6 +840,14 @@
                   </select>
                 </div>
               ` : `<span class="badge">通用讨论区</span>`}
+              <div style="min-width:200px;">
+                <label for="blockPriority">提醒级别</label>
+                <select id="blockPriority">
+                  <option value="normal" ${alertLevel === "normal" ? "selected" : ""}>正常（48h 未回复邮件）</option>
+                  <option value="urgent" ${alertLevel === "urgent" ? "selected" : ""}>紧急（5min 未回复邮件）</option>
+                </select>
+              </div>
+              <span class="badge">${alertLevel === "urgent" ? "紧急：5分钟未回复邮件提醒" : "正常：48小时未回复邮件提醒"}</span>
             </div>
             <div class="messages">
               ${msgs.map(m => `
@@ -902,6 +913,15 @@
           uiState.target = blockTarget.value;
         });
       }
+      const blockPriority = document.getElementById("blockPriority");
+      if (blockPriority) {
+        blockPriority.addEventListener("change", () => {
+          const next = blockPriority.value === "urgent" ? "urgent" : "normal";
+          blockAlerts[req.id][activeBlock] = next;
+          showToast(next === "urgent" ? "已设为紧急（5分钟未回复邮件提醒）" : "已设为正常（48小时未回复邮件提醒）");
+          renderDetail();
+        });
+      }
 
       const filePreviewEl = document.getElementById("msg-file-list");
       const fileInputEl = document.getElementById("msg-file");
@@ -952,14 +972,14 @@
           const pending = uiState.pendingFiles[req.id] || [];
           const mergedAtts = [...atts, ...pending];
           state.messages[req.id] = state.messages[req.id] || { general: [], function: [], nonfunction: [] };
-          state.messages[req.id][currentBlock].push({
-            author: userName,
-            role,
-            time: new Date().toISOString().replace("T", " ").substring(0, 16),
-            text,
-            attachments: mergedAtts,
-            target: currentBlock === "general" ? "" : target
-          });
+      state.messages[req.id][currentBlock].push({
+        author: userName,
+        role,
+        time: new Date().toISOString().replace("T", " ").substring(0, 16),
+        text,
+        attachments: mergedAtts,
+        target: currentBlock === "general" ? "" : target
+      });
           textEl.value = "";
           attEl.value = "";
           if (uiState.pendingFiles[req.id]) uiState.pendingFiles[req.id].length = 0;

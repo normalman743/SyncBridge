@@ -625,7 +625,8 @@
           { from: "Rewrite", to: "Error", actor: "client-demo", time: "2025-12-12 20:15", note: "协商失败" }
         ]
       },
-      selectedId: null
+      selectedId: null,
+      blockAlerts: {}
     };
 
     const reqListEl = document.getElementById("reqList");
@@ -950,6 +951,7 @@
           function: [],
           nonfunction: []
         };
+        state.blockAlerts[nextId] = { general: "normal", function: "normal", nonfunction: "normal" };
         createState.functions = [];
         createState.nonfunctions = [];
         editState.reqId = null;
@@ -1215,6 +1217,7 @@
       }
       uiState.lastReq = req.id;
       uiState.statusCache[req.id] = req.status;
+      state.blockAlerts[req.id] = state.blockAlerts[req.id] || { general: "normal", function: "normal", nonfunction: "normal" };
       const messageBlocks = state.messages[req.id] || { general: [], function: [], nonfunction: [] };
       uiState.pendingFiles[req.id] = uiState.pendingFiles[req.id] || [];
       const pendingFiles = uiState.pendingFiles[req.id];
@@ -1255,6 +1258,7 @@
         uiState.target = "";
       }
       const msgs = messageBlocks[activeBlock] || [];
+      const alertLevel = state.blockAlerts[req.id][activeBlock] || "normal";
       const actionButtons = [];
       if (req.status === "Preview") {
         actionButtons.push(`<button class="btn primary" id="publishBtn">发布为 Available</button>`);
@@ -1683,21 +1687,29 @@
       const chatSection = discussionEnabled ? `
         <div class="section">
           <h4>讨论区（Blocks）</h4>
-          <div class="action-bar">
-            <div class="tabs">
-              <button class="tab ${activeBlock === "general" ? "active" : ""}" data-block="general">general</button>
-              <button class="tab ${activeBlock === "function" ? "active" : ""}" data-block="function">function</button>
-              <button class="tab ${activeBlock === "nonfunction" ? "active" : ""}" data-block="nonfunction">nonfunction</button>
-            </div>
-            ${activeBlock !== "general" ? `
+            <div class="action-bar">
+              <div class="tabs">
+                <button class="tab ${activeBlock === "general" ? "active" : ""}" data-block="general">general</button>
+                <button class="tab ${activeBlock === "function" ? "active" : ""}" data-block="function">function</button>
+                <button class="tab ${activeBlock === "nonfunction" ? "active" : ""}" data-block="nonfunction">nonfunction</button>
+              </div>
+              ${activeBlock !== "general" ? `
+                <div style="min-width:200px;">
+                  <label for="blockTarget">关联目标</label>
+                  <select id="blockTarget">
+                    ${targets.length ? targets.map(t => `<option value="${t}" ${t === uiState.target ? "selected" : ""}>${t}</option>`).join("") : `<option value="">暂无可选项</option>`}
+                  </select>
+                </div>
+              ` : `<span class="badge">通用讨论区</span>`}
               <div style="min-width:200px;">
-                <label for="blockTarget">关联目标</label>
-                <select id="blockTarget">
-                  ${targets.length ? targets.map(t => `<option value="${t}" ${t === uiState.target ? "selected" : ""}>${t}</option>`).join("") : `<option value="">暂无可选项</option>`}
+                <label for="blockPriority">提醒级别</label>
+                <select id="blockPriority">
+                  <option value="normal" ${alertLevel === "normal" ? "selected" : ""}>正常（48h 未回复邮件）</option>
+                  <option value="urgent" ${alertLevel === "urgent" ? "selected" : ""}>紧急（5min 未回复邮件）</option>
                 </select>
               </div>
-            ` : `<span class="badge">通用讨论区</span>`}
-          </div>
+              <span class="badge">${alertLevel === "urgent" ? "紧急：5分钟未回复邮件提醒" : "正常：48小时未回复邮件提醒"}</span>
+            </div>
           <div class="messages">
             ${msgs.map(m => `
               <div class="msg">
@@ -2033,6 +2045,15 @@
       if (blockTarget) {
         blockTarget.addEventListener("change", () => {
           uiState.target = blockTarget.value;
+        });
+      }
+      const blockPriority = document.getElementById("blockPriority");
+      if (blockPriority) {
+        blockPriority.addEventListener("change", () => {
+          const next = blockPriority.value === "urgent" ? "urgent" : "normal";
+          state.blockAlerts[req.id][activeBlock] = next;
+          showToast(next === "urgent" ? "已设为紧急（5分钟未回复邮件提醒）" : "已设为正常（48小时未回复邮件提醒）");
+          renderDetail();
         });
       }
 
